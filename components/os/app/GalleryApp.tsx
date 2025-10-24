@@ -361,6 +361,7 @@ const GalleryApp: React.FC<GalleryAppProps> = ({ windowId }) => {
                   onItemClick={handleImageClick}
                   scaleOnHover={true}
                   colorShiftOnHover={false}
+                  className=''
                 />
                 </div>
               ) : (

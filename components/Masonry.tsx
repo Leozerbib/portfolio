@@ -109,10 +109,10 @@ const Masonry: React.FC<MasonryProps> = ({
   scaleOnHover = true,
   colorShiftOnHover = false
 }) => {
-  // Responsive columns based on screen size
+  // Responsive columns based on screen size (1-5 columns)
   const columns = useMedia(
-    ['(min-width: 1400px)', '(min-width: 1024px)', '(min-width: 768px)', '(min-width: 640px)'],
-    [5, 4, 3, 2],
+    ['(min-width: 1536px)', '(min-width: 1280px)', '(min-width: 1024px)', '(min-width: 768px)', '(min-width: 640px)'],
+    [5, 4, 3, 2, 2],
     1
   );
 
@@ -150,6 +150,14 @@ const Masonry: React.FC<MasonryProps> = ({
     const availableWidth = width - totalGaps;
     const columnWidth = Math.min(maxItemWidth, Math.max(minItemWidth, availableWidth / columns));
     
+    // Calculate total grid width for centering
+    const totalGridWidth = columns * columnWidth + totalGaps;
+    const offsetX = Math.max(0, (width - totalGridWidth) / 2);
+    
+    // Ensure grid doesn't exceed container bounds
+    const maxX = width - columnWidth;
+    const safeOffsetX = Math.min(offsetX, maxX - (columns - 1) * (columnWidth + gap));
+    
     // Initialize column heights
     const columnHeights = new Array(columns).fill(0);
     
@@ -164,8 +172,8 @@ const Masonry: React.FC<MasonryProps> = ({
       // Find the shortest column
       const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
       
-      // Calculate position
-      const x = shortestColumnIndex * (columnWidth + gap);
+      // Calculate position with safe centering offset
+      const x = Math.max(0, Math.min(safeOffsetX + shortestColumnIndex * (columnWidth + gap), maxX));
       const y = columnHeights[shortestColumnIndex];
       
       // Update column height
@@ -198,21 +206,26 @@ const Masonry: React.FC<MasonryProps> = ({
       };
 
       if (!hasMounted.current) {
+        // Set initial position immediately to prevent stacking
+        gsap.set(element, {
+          x: item.x,
+          y: item.y,
+          width: item.width,
+          height: item.height
+        });
+
         // Initial animation from bottom
         gsap.fromTo(
           element,
           {
             opacity: 0,
             y: item.y + 100,
-            x: item.x,
-            width: item.width,
-            height: item.height,
             scale: 0.8,
             filter: 'blur(10px)'
           },
           {
             opacity: 1,
-            ...animationProps,
+            y: item.y,
             scale: 1,
             filter: 'blur(0px)',
             duration: animationDuration,
@@ -271,7 +284,7 @@ const Masonry: React.FC<MasonryProps> = ({
   return (
     <div 
       ref={containerRef} 
-      className={cn("relative w-full", className)}
+      className={cn("relative w-full overflow-hidden", className)}
       style={{ 
         height: grid.length > 0 ? Math.max(...grid.map(item => item.y + item.height)) + gap : 'auto'
       }}
@@ -282,6 +295,8 @@ const Masonry: React.FC<MasonryProps> = ({
           data-masonry-id={item.id}
           className="absolute cursor-pointer overflow-hidden rounded-lg shadow-lg transition-shadow duration-300 hover:shadow-xl"
           style={{
+            width: item.width,
+            height: item.height,
             willChange: 'transform, opacity',
             transformOrigin: 'center center'
           }}
