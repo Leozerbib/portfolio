@@ -32,7 +32,7 @@ type GLTFResult = GLTF & {
     trackpad: THREE.MeshStandardMaterial
     touchbar: THREE.MeshStandardMaterial
   }
-  animations: GLTFAction[]
+  animations: THREE.AnimationClip[]
 }
 
 interface MacBookModelProps {
@@ -45,9 +45,10 @@ interface MacBookModelProps {
   onKeyboardClick?: (event: any) => void
 }
 
-export function MacBookModel({ open, hinge, ...props }: MacBookModelProps) {
+export function MacBookModel({ hinge, ...props }: MacBookModelProps) {
   const group = useRef<THREE.Group>(null!)
-  const { nodes, materials } = useGLTF('/mac-draco.glb') as GLTFResult
+  const gltf = useGLTF('/mac-draco.glb')
+  const { nodes, materials } = gltf as unknown as GLTFResult
   // const [isOpen, setOpen] = useState(open) // removed, rely on parent 'open' only
   
   // Cursor state on hover
@@ -77,7 +78,7 @@ export function MacBookModel({ open, hinge, ...props }: MacBookModelProps) {
         e.stopPropagation()
         setHovered(true)
       }}
-      onPointerOut={(e) => setHovered(false)}
+      onPointerOut={() => setHovered(false)}
       dispose={null}
     >
       {/* Screen/Lid Group with hinge animation */}

@@ -14,8 +14,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 import { useOS, osActions } from '@/hooks/useOS'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import Image from 'next/image'
@@ -157,7 +155,7 @@ export function LoginScreen() {
             {/* Hint */}
             <div className="text-center">
               <p className="text-xs text-muted-foreground">
-                Try password "portfolio"
+                Try password portfolio
               </p>
             </div>
           </Form>

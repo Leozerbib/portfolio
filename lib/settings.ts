@@ -11,7 +11,7 @@ export interface MonocolorBackground {
 export interface ImageBackground {
   type: 'image'
   url: string
-  position?: 'center' | 'top' | 'bottom' | 'left' | 'right' | 'cover' | 'contain'
+  position?: 'center' | 'top' | 'bottom' | 'left' | 'right'
   repeat?: 'no-repeat' | 'repeat' | 'repeat-x' | 'repeat-y'
   size?: 'auto' | 'cover' | 'contain' | string
 }
@@ -101,6 +101,9 @@ export interface EnhancedSystemSettings {
   sounds?: boolean
   notifications?: boolean
   autoLogin?: boolean
+  
+  // Background configuration
+  backgroundConfig: BackgroundConfig
 }
 
 // Default settings configuration
@@ -142,8 +145,9 @@ export const defaultSettings: EnhancedSystemSettings = {
     loginBackground: {
       type: 'image',
       url: '',
-      position: 'cover',
+      position: 'center',
       repeat: 'no-repeat',
+      size: 'cover'
     },
     primaryColor: '#3b82f6',
     secondaryColor: '#a855f7',
@@ -163,6 +167,12 @@ export const defaultSettings: EnhancedSystemSettings = {
   sounds: true,
   notifications: true,
   autoLogin: false,
+  
+  // Background configuration
+  backgroundConfig: {
+    type: 'monocolor',
+    color: '#1a1a1a'
+  }
 }
 
 // Utility functions for settings management
@@ -225,6 +235,9 @@ export class SettingsManager {
       sounds: osSettings.sounds,
       notifications: osSettings.notifications,
       autoLogin: osSettings.autoLogin,
+      
+      // Background configuration (for legacy compatibility)
+      backgroundConfig: osSettings.styleSettings?.background || osSettings.backgroundConfig || defaultSettings.backgroundConfig,
     }
   }
 

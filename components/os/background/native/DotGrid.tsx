@@ -180,6 +180,7 @@ const DotGrid: React.FC<DotGridProps> = ({
     let ro: ResizeObserver | null = null;
     if ('ResizeObserver' in window) {
       ro = new ResizeObserver(buildGrid);
+      // eslint-disable-next-line @typescript-eslint/no-unused-expressions
       wrapperRef.current && ro.observe(wrapperRef.current);
     } else {
       (window as Window).addEventListener('resize', buildGrid);

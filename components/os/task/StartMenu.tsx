@@ -76,7 +76,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
                       "border border-transparent hover:border-border"
                     )}
                   >
-                    <span className="text-2xl">{app.icon}</span>
+                    <app.icon className="h-6 w-6" />
                     <span className="text-xs text-center leading-tight">{app.name}</span>
                   </Button>
                 ))}
@@ -110,7 +110,7 @@ export function StartMenu({ onClose }: StartMenuProps) {
                       "hover:bg-secondary/80 transition-all duration-200"
                     )}
                   >
-                    <span className="mr-3 text-lg">{app.icon}</span>
+                    <app.icon className="h-5 w-5" />
                     <span className="text-sm">{app.name}</span>
                   </Button>
                 ))}

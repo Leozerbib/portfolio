@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { WindowContent } from './WindowContent'
 import { animate, createDraggable } from 'animejs'
 import { cn } from '@/lib/utils'
+import GradualBlur from '@/components/GradualBlur'
 
 interface WindowProps {
   baba_window: OSWindow
@@ -23,7 +24,6 @@ export function Window({ baba_window }: WindowProps) {
   const [initialPosition, setInitialPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const windowRef = useRef<HTMLDivElement>(null)
-  const animationRef = useRef<ReturnType<typeof animate> | null>(null)
   const draggableRef = useRef<ReturnType<typeof createDraggable> | null>(null)
 
   const isActive = state.activeWindowId === baba_window.id
@@ -108,7 +108,6 @@ export function Window({ baba_window }: WindowProps) {
         releaseStiffness: 100,
         maxVelocity: 0,
         onDrag: () => {
-          const rect = windowRef.current?.getBoundingClientRect()
           handleSnapDetection()
         },
         onRelease: () => {
@@ -151,7 +150,7 @@ export function Window({ baba_window }: WindowProps) {
         draggableRef.current = null
       }
     }
-  }, [dispatch, baba_window.id, baba_window.isDraggable, baba_window.isMovable, /* handleFocus removed to keep draggable stable during focus re-renders */ handleSnapDetection, getSnapCandidate, emitSnapPreview])
+  }, [dispatch, baba_window.id, baba_window.isDraggable, baba_window.isMovable, handleSnapDetection, getSnapCandidate, emitSnapPreview, baba_window.initialSize.width, baba_window.initialSize.height, baba_window.isSnapped])
 
   // Handle resize start with direction
   const handleResizeStart = useCallback((e: React.MouseEvent, direction: ResizeDirection) => {
@@ -436,14 +435,26 @@ export function Window({ baba_window }: WindowProps) {
           <span className="text-xs leading-none"> </span>
         </Button>
       </div>
+      
       {/* Window Content */}
       <CardContent 
         className={cn(
-        "p-0 flex-1 overflow-hidden",
+        "p-0 flex-1 overflow-hidden relative",
         baba_window.isMaximized ? "rounded-none" : "rounded-lg",
       )}>
         <WindowContent window={baba_window} />
+        <GradualBlur
+        target="parent"
+        position="bottom"
+        height="3rem"
+        strength={1}
+        divCount={3}
+        curve="bezier"
+        exponential={false}
+        opacity={0.9}
+      />
       </CardContent>
+        
 
       {/* Resize Handles (only when not maximized and resizable) */}
       {!baba_window.isMaximized && baba_window.isResizable && (

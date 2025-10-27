@@ -78,6 +78,7 @@ export interface OSFileSystemItem {
   id: string
   name: string
   path: string
+  type: 'file' | 'folder'
   createdAt: number
   modifiedAt: number
   accessedAt: number
@@ -211,6 +212,11 @@ export class FileSystemUtils {
   }
 
   static getMimeType(extension: string): string {
+    // Ensure extension is a string and handle null/undefined cases
+    if (!extension || typeof extension !== 'string') {
+      return 'application/octet-stream'
+    }
+    
     const mimeTypes: Record<string, string> = {
       'txt': 'text/plain',
       'md': 'text/markdown',
@@ -493,21 +499,36 @@ export class FileSystemUtils {
       accessedAt: timestamp
     }
 
+    // If it's a folder, recursively duplicate children
     if (item.type === 'folder') {
       const folder = item as OSFolder
-      const newFolder = duplicatedItem as OSFolder
-      newFolder.children = new Map()
+      const duplicatedFolder = duplicatedItem as OSFolder
+      duplicatedFolder.children = new Map()
       
-      // Recursively duplicate children
       for (const child of folder.children.values()) {
         const duplicatedChild = FileSystemUtils.duplicateItem(child)
-        newFolder.children.set(duplicatedChild.id, duplicatedChild)
+        duplicatedFolder.children.set(duplicatedChild.id, duplicatedChild)
       }
-      
-      newFolder.itemCount = newFolder.children.size
     }
 
     return duplicatedItem
+  }
+
+  static getAllFiles(root: OSFolder): OSFile[] {
+    const files: OSFile[] = []
+    
+    const collectFiles = (folder: OSFolder) => {
+      for (const item of folder.children.values()) {
+        if (item.type === 'file') {
+          files.push(item as OSFile)
+        } else if (item.type === 'folder') {
+          collectFiles(item as OSFolder)
+        }
+      }
+    }
+    
+    collectFiles(root)
+    return files
   }
 }
 
@@ -601,11 +622,17 @@ type OSAction =
   | { type: 'TOGGLE_NOTIFICATION_CENTER' }
   
   // File System
-  | { type: 'CREATE_FILE'; payload: { file: Omit<OSFile, 'id' | 'createdAt' | 'modifiedAt'> } }
-  | { type: 'DELETE_FILE'; payload: { fileId: string } }
-  | { type: 'RENAME_FILE'; payload: { fileId: string; newName: string } }
-  | { type: 'MOVE_FILE'; payload: { fileId: string; newParentId: string } }
+  | { type: 'CREATE_FILE'; payload: { parentPath: string; file: Omit<OSFile, 'id' | 'createdAt' | 'modifiedAt'> } }
+  | { type: 'CREATE_FOLDER'; payload: { parentPath: string; folderName: string; icon?: LucideIcon } }
+  | { type: 'DELETE_FILE'; payload: { fileId: string; itemPath: string } }
+  | { type: 'RENAME_FILE'; payload: { fileId: string; itemPath: string; newName: string } }
+  | { type: 'MOVE_FILE'; payload: { fileId: string; sourcePath: string; targetPath: string; newParentId: string } }
   | { type: 'SELECT_FILE'; payload: { fileId: string; multiSelect?: boolean } }
+  | { type: 'DESELECT_ALL_FILES' }
+  | { type: 'NAVIGATE_TO'; payload: { path: string } }
+  | { type: 'TOGGLE_FOLDER_EXPANSION'; payload: { folderPath: string } }
+  | { type: 'COPY_TO_CLIPBOARD'; payload: { itemPaths: string[]; operation: 'copy' | 'cut' } }
+  | { type: 'PASTE_FROM_CLIPBOARD'; payload: { targetPath: string } }
   | { type: 'CHANGE_DIRECTORY'; payload: { directoryId: string } }
   
   // System Settings
@@ -638,6 +665,7 @@ type OSAction =
   | { type: 'REMOVE_MONITOR'; payload: { monitorId: string } }
   | { type: 'SET_PRIMARY_MONITOR'; payload: { monitorId: string } }
   | { type: 'SET_ACTIVE_MONITOR'; payload: { monitorId: string } }
+  | { type: 'ADD_SHORTCUT'; payload: { key: string; action: string } }
 
 // Initial OS state
 const initialState: OSState = {
@@ -670,18 +698,12 @@ const initialState: OSState = {
     { id: 'browser', name: 'Browser', icon: Globe, component: 'Browser', category: 'productivity', isSystemApp: false },
     { id: 'terminal', name: 'Terminal', icon: Terminal, component: 'Terminal', category: 'development', isSystemApp: true },
     { id: 'email', name: 'Email', icon: Mail, component: 'Email', category: 'communication', isSystemApp: false },
-    { id: 'about', name: 'About', icon: User, component: 'About', category: 'system', isSystemApp: true },
-    { id: 'vscode', name: 'VS Code', icon: Code, component: 'VSCode', category: 'development', isSystemApp: false },
-    { id: 'portfolio', name: 'Portfolio', icon: Briefcase, component: 'Portfolio', category: 'productivity', isSystemApp: false },
-    { id: 'projects', name: 'Projects', icon: Rocket, component: 'Projects', category: 'productivity', isSystemApp: false },
-    { id: 'contact', name: 'Contact', icon: Phone, component: 'Contact', category: 'communication', isSystemApp: false },
     { id: 'settings', name: 'Settings', icon: Settings, component: 'Settings', category: 'system', isSystemApp: true },
     { id: 'files', name: 'File Manager', icon: Folder, component: 'FileManager', category: 'system', isSystemApp: true },
     { id: 'gallery', name: 'Gallery', icon: Image, component: 'Gallery', category: 'entertainment', isSystemApp: false },
-    { id: 'music', name: 'Music Player', icon: Music, component: 'MusicPlayer', category: 'entertainment', isSystemApp: false },
-    { id: 'video', name: 'Video Player', icon: Video, component: 'VideoPlayer', category: 'entertainment', isSystemApp: false },
+    { id: 'markdown', name: 'Markdown Viewer', icon: FileText, component: 'MarkdownApp', category: 'productivity', isSystemApp: false },
   ],
-  taskbarApps: ['browser', 'terminal', 'email', 'about', 'vscode', 'files', 'gallery'],
+  taskbarApps: ['browser', 'terminal', 'email', 'files', 'gallery', 'markdown'],
   recentApps: [],
   
   // Notifications
@@ -703,6 +725,109 @@ const initialState: OSState = {
     const projects = FileSystemUtils.createFolder('projects', 'Projects', '/Projects', Briefcase)
     const apps = FileSystemUtils.createFolder('apps', 'Apps', '/Apps', Package)
     
+    // Add sample markdown files to Documents folder
+    const sampleMarkdownFiles = [
+      {
+        id: 'readme',
+        name: 'README.md',
+        content: `# Welcome to My Portfolio OS
+
+This is a simulated operating system built with Next.js and React. It features:
+
+- File system management
+- Multiple applications
+- Window management
+- Markdown viewer
+- And much more!
+
+## Getting Started
+
+Click on the applications in the taskbar to explore different features.
+
+## Features
+
+- **File Explorer**: Browse through the file system
+- **Markdown Viewer**: View and edit markdown files
+- **Browser**: Web browsing simulation
+- **Settings**: Customize your experience
+
+Enjoy exploring!`,
+        size: 512,
+        path: '/Documents/README.md',
+        mimeType: 'text/markdown'
+      },
+      {
+        id: 'notes',
+        name: 'Notes.md',
+        content: `# My Notes
+
+## Project Ideas
+- [ ] Add more applications to the OS
+- [ ] Implement file editing capabilities
+- [ ] Add drag and drop functionality
+- [ ] Create a code editor app
+
+## Technical Notes
+- Using Next.js 15 with App Router
+- shadcn/ui for components
+- Tailwind CSS for styling
+- TypeScript for type safety
+
+## Resources
+- [Next.js Documentation](https://nextjs.org/docs)
+- [shadcn/ui Components](https://ui.shadcn.com)
+- [Tailwind CSS](https://tailwindcss.com)`,
+        size: 456,
+        path: '/Documents/Notes.md',
+        mimeType: 'text/markdown'
+      },
+      {
+        id: 'changelog',
+        name: 'CHANGELOG.md',
+        content: `# Changelog
+
+## [1.0.0] - 2024-01-15
+
+### Added
+- Initial OS simulation
+- File system management
+- Window management system
+- Taskbar with application shortcuts
+- Markdown viewer application
+- File browser dialog
+- Basic settings management
+
+### Features
+- Responsive design
+- Dark/light theme support
+- Keyboard shortcuts
+- File operations (open, close, navigate)
+
+### Technical
+- Built with Next.js 15
+- TypeScript for type safety
+- shadcn/ui component library
+- Tailwind CSS for styling`,
+        size: 678,
+        path: '/Documents/CHANGELOG.md',
+        mimeType: 'text/markdown'
+      }
+    ]
+
+    // Add markdown files to Documents folder
+    sampleMarkdownFiles.forEach(fileData => {
+      const file = FileSystemUtils.createFile(
+        fileData.id,
+        fileData.name,
+        fileData.path,
+        'md', // extension
+        fileData.size,
+        fileData.content, // content
+        FileText // icon
+      )
+      FileSystemUtils.addToFolder(documents, file)
+    })
+
     // Add main folders to root
     FileSystemUtils.addToFolder(root, desktop)
     FileSystemUtils.addToFolder(root, documents)
@@ -741,6 +866,310 @@ const initialState: OSState = {
         Image
       )
       FileSystemUtils.addToFolder(bgFolder, file)
+    })
+
+    // Create gallery subfolder in images
+    const galleryFolder = FileSystemUtils.createFolder('gallery', 'gallery', '/Images/gallery', Image)
+    FileSystemUtils.addToFolder(images, galleryFolder)
+
+    // Create gallery subfolders and images
+    const europeFolder = FileSystemUtils.createFolder('europe', 'europe', '/Images/gallery/europe', Image)
+    const franceFolder = FileSystemUtils.createFolder('france', 'france', '/Images/gallery/france', Image)
+    const indeFolder = FileSystemUtils.createFolder('inde', 'inde', '/Images/gallery/inde', Image)
+    const marocFolder = FileSystemUtils.createFolder('maroc', 'maroc', '/Images/gallery/maroc', Image)
+    const newYorkFolder = FileSystemUtils.createFolder('new york', 'new york', '/Images/gallery/new york', Image)
+    const thailandeFolder = FileSystemUtils.createFolder('thailande', 'thailande', '/Images/gallery/thailande', Image)
+
+    FileSystemUtils.addToFolder(galleryFolder, europeFolder)
+    FileSystemUtils.addToFolder(galleryFolder, franceFolder)
+    FileSystemUtils.addToFolder(galleryFolder, indeFolder)
+    FileSystemUtils.addToFolder(galleryFolder, marocFolder)
+    FileSystemUtils.addToFolder(galleryFolder, newYorkFolder)
+    FileSystemUtils.addToFolder(galleryFolder, thailandeFolder)
+
+    // Europe images - All 29 images
+    const europeImages = [
+      { id: 'eu1', name: 'Albany - 2024 (11).webp', size: 245760, path: '/image_os/gallery/europe/Albany - 2024 (11).webp' },
+      { id: 'eu2', name: 'Albany - 2024 (110).webp', size: 198432, path: '/image_os/gallery/europe/Albany - 2024 (110).webp' },
+      { id: 'eu3', name: 'Albany - 2024 (111).webp', size: 312576, path: '/image_os/gallery/europe/Albany - 2024 (111).webp' },
+      { id: 'eu4', name: 'Albany - 2024 (112).webp', size: 267890, path: '/image_os/gallery/europe/Albany - 2024 (112).webp' },
+      { id: 'eu5', name: 'Albany - 2024 (113).webp', size: 289123, path: '/image_os/gallery/europe/Albany - 2024 (113).webp' },
+      { id: 'eu6', name: 'Albany - 2024 (114).webp', size: 234567, path: '/image_os/gallery/europe/Albany - 2024 (114).webp' },
+      { id: 'eu7', name: 'Albany - 2024 (115).webp', size: 345678, path: '/image_os/gallery/europe/Albany - 2024 (115).webp' },
+      { id: 'eu8', name: 'Albany - 2024 (116).webp', size: 198765, path: '/image_os/gallery/europe/Albany - 2024 (116).webp' },
+      { id: 'eu9', name: 'Albany - 2024 (117).webp', size: 276543, path: '/image_os/gallery/europe/Albany - 2024 (117).webp' },
+      { id: 'eu10', name: 'Albany - 2024 (118).webp', size: 321098, path: '/image_os/gallery/europe/Albany - 2024 (118).webp' },
+      { id: 'eu11', name: 'Albany - 2024 (119).webp', size: 245760, path: '/image_os/gallery/europe/Albany - 2024 (119).webp' },
+      { id: 'eu12', name: 'Albany - 2024 (120).webp', size: 198432, path: '/image_os/gallery/europe/Albany - 2024 (120).webp' },
+      { id: 'eu13', name: 'Dresde - 2023 (11).webp', size: 312576, path: '/image_os/gallery/europe/Dresde - 2023 (11).webp' },
+      { id: 'eu14', name: 'Dresde - 2023 (12).webp', size: 267890, path: '/image_os/gallery/europe/Dresde - 2023 (12).webp' },
+      { id: 'eu15', name: 'Dresde - 2023 (13).webp', size: 289123, path: '/image_os/gallery/europe/Dresde - 2023 (13).webp' },
+      { id: 'eu16', name: 'Dresde - 2023 (14).webp', size: 234567, path: '/image_os/gallery/europe/Dresde - 2023 (14).webp' },
+      { id: 'eu17', name: 'Dresde - 2023 (15).webp', size: 345678, path: '/image_os/gallery/europe/Dresde - 2023 (15).webp' },
+      { id: 'eu18', name: 'Dresde - 2023 (16).webp', size: 198765, path: '/image_os/gallery/europe/Dresde - 2023 (16).webp' },
+      { id: 'eu19', name: 'Grece - 2024 (22).webp', size: 276543, path: '/image_os/gallery/europe/Grece - 2024 (22).webp' },
+      { id: 'eu20', name: 'Grece - 2024 (78).webp', size: 321098, path: '/image_os/gallery/europe/Grece - 2024 (78).webp' },
+      { id: 'eu21', name: 'Grece - 2024 - nb (13).webp', size: 245760, path: '/image_os/gallery/europe/Grece - 2024 - nb (13).webp' },
+      { id: 'eu22', name: 'Grece - 2024 - nb (14).webp', size: 198432, path: '/image_os/gallery/europe/Grece - 2024 - nb (14).webp' },
+      { id: 'eu23', name: 'Grece - 2024 - nb (15).webp', size: 312576, path: '/image_os/gallery/europe/Grece - 2024 - nb (15).webp' },
+      { id: 'eu24', name: 'Grece - 2024 - nb (16).webp', size: 267890, path: '/image_os/gallery/europe/Grece - 2024 - nb (16).webp' },
+      { id: 'eu25', name: 'Sicile - 2023 (1).webp', size: 289123, path: '/image_os/gallery/europe/Sicile - 2023 (1).webp' },
+      { id: 'eu26', name: 'Sicile - 2023 (15).webp', size: 234567, path: '/image_os/gallery/europe/Sicile - 2023 (15).webp' },
+      { id: 'eu27', name: 'Sicile - 2023 (16).webp', size: 345678, path: '/image_os/gallery/europe/Sicile - 2023 (16).webp' },
+      { id: 'eu28', name: 'Sicile - 2023 (17).webp', size: 198765, path: '/image_os/gallery/europe/Sicile - 2023 (17).webp' },
+      { id: 'eu29', name: 'Sicile - 2023 (18).webp', size: 276543, path: '/image_os/gallery/europe/Sicile - 2023 (18).webp' }
+    ]
+
+    europeImages.forEach(img => {
+      const file = FileSystemUtils.createFile(
+        img.id,
+        img.name,
+        `/Images/gallery/europe/${img.name}`,
+        'webp',
+        img.size,
+        img.path,
+        Image
+      )
+      FileSystemUtils.addToFolder(europeFolder, file)
+    })
+
+    // France images - All 30 images
+    const franceImages = [
+      { id: 'fr1', name: 'Avignon - 2024 (10).webp', size: 245760, path: '/image_os/gallery/france/Avignon - 2024 (10).webp' },
+      { id: 'fr2', name: 'Avignon - 2024 (11).webp', size: 198432, path: '/image_os/gallery/france/Avignon - 2024 (11).webp' },
+      { id: 'fr3', name: 'Avignon - 2024 (12).webp', size: 312576, path: '/image_os/gallery/france/Avignon - 2024 (12).webp' },
+      { id: 'fr4', name: 'Avignon - 2024 (13).webp', size: 267890, path: '/image_os/gallery/france/Avignon - 2024 (13).webp' },
+      { id: 'fr5', name: 'Baden - 2023 (11).webp', size: 289123, path: '/image_os/gallery/france/Baden - 2023 (11).webp' },
+      { id: 'fr6', name: 'Baden - 2023 (12).webp', size: 234567, path: '/image_os/gallery/france/Baden - 2023 (12).webp' },
+      { id: 'fr7', name: 'Baden - 2023 (13).webp', size: 345678, path: '/image_os/gallery/france/Baden - 2023 (13).webp' },
+      { id: 'fr8', name: 'Baden - 2023 (14).webp', size: 198765, path: '/image_os/gallery/france/Baden - 2023 (14).webp' },
+      { id: 'fr9', name: 'GP Mathilde - 2024 (17).webp', size: 276543, path: '/image_os/gallery/france/GP Mathilde - 2024 (17).webp' },
+      { id: 'fr10', name: 'GP Mathilde - 2024 (18).webp', size: 321098, path: '/image_os/gallery/france/GP Mathilde - 2024 (18).webp' },
+      { id: 'fr11', name: 'GP Mathilde - 2024 (19).webp', size: 245760, path: '/image_os/gallery/france/GP Mathilde - 2024 (19).webp' },
+      { id: 'fr12', name: 'GP Mathilde - 2024 (20).webp', size: 198432, path: '/image_os/gallery/france/GP Mathilde - 2024 (20).webp' },
+      { id: 'fr13', name: 'Paris - 2024 (204).webp', size: 312576, path: '/image_os/gallery/france/Paris - 2024 (204).webp' },
+      { id: 'fr14', name: 'Paris - 2024 (205).webp', size: 267890, path: '/image_os/gallery/france/Paris - 2024 (205).webp' },
+      { id: 'fr15', name: 'Paris - 2024 (206).webp', size: 289123, path: '/image_os/gallery/france/Paris - 2024 (206).webp' },
+      { id: 'fr16', name: 'Paris - 2024 (207).webp', size: 234567, path: '/image_os/gallery/france/Paris - 2024 (207).webp' },
+      { id: 'fr17', name: 'Paris - 2024 (208).webp', size: 345678, path: '/image_os/gallery/france/Paris - 2024 (208).webp' },
+      { id: 'fr18', name: 'Paris - 2024 (209).webp', size: 198765, path: '/image_os/gallery/france/Paris - 2024 (209).webp' },
+      { id: 'fr19', name: 'Ski courchevel - 2024 (27).webp', size: 276543, path: '/image_os/gallery/france/Ski courchevel - 2024 (27).webp' },
+      { id: 'fr20', name: 'Ski courchevel - 2024 (28).webp', size: 321098, path: '/image_os/gallery/france/Ski courchevel - 2024 (28).webp' },
+      { id: 'fr21', name: 'Ski courchevel - 2024 (29).webp', size: 245760, path: '/image_os/gallery/france/Ski courchevel - 2024 (29).webp' },
+      { id: 'fr22', name: 'Teuf Baden - 2023 (10).webp', size: 198432, path: '/image_os/gallery/france/Teuf Baden - 2023 (10).webp' },
+      { id: 'fr23', name: 'Teuf Baden - 2023 (11).webp', size: 312576, path: '/image_os/gallery/france/Teuf Baden - 2023 (11).webp' },
+      { id: 'fr24', name: 'Teuf Baden - 2023 (12).webp', size: 267890, path: '/image_os/gallery/france/Teuf Baden - 2023 (12).webp' },
+      { id: 'fr25', name: 'Teuf Baden - 2023 (13).webp', size: 289123, path: '/image_os/gallery/france/Teuf Baden - 2023 (13).webp' },
+      { id: 'fr26', name: 'Toulon - 2023 (15).webp', size: 234567, path: '/image_os/gallery/france/Toulon - 2023 (15).webp' },
+      { id: 'fr27', name: 'Toulon - 2023 (16).webp', size: 345678, path: '/image_os/gallery/france/Toulon - 2023 (16).webp' },
+      { id: 'fr28', name: 'Trek - 2024  (10).webp', size: 198765, path: '/image_os/gallery/france/Trek - 2024  (10).webp' },
+      { id: 'fr29', name: 'Trek - 2024  (11).webp', size: 276543, path: '/image_os/gallery/france/Trek - 2024  (11).webp' },
+      { id: 'fr30', name: 'Trek - 2024  (12).webp', size: 321098, path: '/image_os/gallery/france/Trek - 2024  (12).webp' }
+    ]
+
+    franceImages.forEach(img => {
+      const file = FileSystemUtils.createFile(
+        img.id,
+        img.name,
+        `/Images/gallery/france/${img.name}`,
+        'webp',
+        img.size,
+        img.path,
+        Image
+      )
+      FileSystemUtils.addToFolder(franceFolder, file)
+    })
+
+    // Inde images - All 89 images
+    const indeImages = [
+      { id: 'in1', name: '000001680037.webp', size: 245760, path: '/image_os/gallery/inde/000001680037.webp' },
+      { id: 'in2', name: '20250209 - Bangalore [081].webp', size: 198432, path: '/image_os/gallery/inde/20250209 - Bangalore [081].webp' },
+      { id: 'in3', name: '20250209 - Bangalore [082].webp', size: 312576, path: '/image_os/gallery/inde/20250209 - Bangalore [082].webp' },
+      { id: 'in4', name: '20250209 - Bangalore [083].webp', size: 267890, path: '/image_os/gallery/inde/20250209 - Bangalore [083].webp' },
+      { id: 'in5', name: '20250209 - Bangalore [084].webp', size: 289123, path: '/image_os/gallery/inde/20250209 - Bangalore [084].webp' },
+      { id: 'in6', name: '20250209 - Bangalore [085].webp', size: 234567, path: '/image_os/gallery/inde/20250209 - Bangalore [085].webp' },
+      { id: 'in7', name: '20250209 - Bangalore [086].webp', size: 345678, path: '/image_os/gallery/inde/20250209 - Bangalore [086].webp' },
+      { id: 'in8', name: '20250209 - Bangalore [087].webp', size: 198765, path: '/image_os/gallery/inde/20250209 - Bangalore [087].webp' },
+      { id: 'in9', name: '20250209 - Bangalore [088].webp', size: 276543, path: '/image_os/gallery/inde/20250209 - Bangalore [088].webp' },
+      { id: 'in10', name: '20250209 - Bangalore [089].webp', size: 321098, path: '/image_os/gallery/inde/20250209 - Bangalore [089].webp' },
+      { id: 'in11', name: '20250209 - Bangalore [090].webp', size: 245760, path: '/image_os/gallery/inde/20250209 - Bangalore [090].webp' },
+      { id: 'in12', name: '20250209 - Bangalore [091].webp', size: 198432, path: '/image_os/gallery/inde/20250209 - Bangalore [091].webp' },
+      { id: 'in13', name: '20250209 - Bangalore [092].webp', size: 312576, path: '/image_os/gallery/inde/20250209 - Bangalore [092].webp' },
+      { id: 'in14', name: '20250209 - Bangalore [093].webp', size: 267890, path: '/image_os/gallery/inde/20250209 - Bangalore [093].webp' },
+      { id: 'in15', name: '20250209 - Bangalore [094].webp', size: 289123, path: '/image_os/gallery/inde/20250209 - Bangalore [094].webp' },
+      { id: 'in16', name: '20250209 - Bangalore [095].webp', size: 234567, path: '/image_os/gallery/inde/20250209 - Bangalore [095].webp' },
+      { id: 'in17', name: '20250209 - Bangalore [096].webp', size: 345678, path: '/image_os/gallery/inde/20250209 - Bangalore [096].webp' },
+      { id: 'in18', name: '20250209 - Bangalore [097].webp', size: 198765, path: '/image_os/gallery/inde/20250209 - Bangalore [097].webp' },
+      { id: 'in19', name: '20250209 - Bangalore [098].webp', size: 276543, path: '/image_os/gallery/inde/20250209 - Bangalore [098].webp' },
+      { id: 'in20', name: '20250209 - Bangalore [099].webp', size: 321098, path: '/image_os/gallery/inde/20250209 - Bangalore [099].webp' },
+      { id: 'in21', name: '20250221 - Andaman [46].webp', size: 245760, path: '/image_os/gallery/inde/20250221 - Andaman [46].webp' },
+      { id: 'in22', name: '20250221 - Andaman [47].webp', size: 198432, path: '/image_os/gallery/inde/20250221 - Andaman [47].webp' },
+      { id: 'in23', name: '20250221 - Andaman [48].webp', size: 312576, path: '/image_os/gallery/inde/20250221 - Andaman [48].webp' },
+      { id: 'in24', name: '20250221 - Andaman [49].webp', size: 267890, path: '/image_os/gallery/inde/20250221 - Andaman [49].webp' },
+      { id: 'in25', name: '20250221 - Andaman [50].webp', size: 289123, path: '/image_os/gallery/inde/20250221 - Andaman [50].webp' },
+      { id: 'in26', name: '20250221 - Andaman [51].webp', size: 234567, path: '/image_os/gallery/inde/20250221 - Andaman [51].webp' },
+      { id: 'in27', name: '20250221 - Andaman [52].webp', size: 345678, path: '/image_os/gallery/inde/20250221 - Andaman [52].webp' },
+      { id: 'in28', name: '20250221 - Andaman [53].webp', size: 198765, path: '/image_os/gallery/inde/20250221 - Andaman [53].webp' },
+      { id: 'in29', name: '20250221 - Andaman [54].webp', size: 276543, path: '/image_os/gallery/inde/20250221 - Andaman [54].webp' },
+      { id: 'in30', name: '20250221 - Andaman [55].webp', size: 321098, path: '/image_os/gallery/inde/20250221 - Andaman [55].webp' },
+      { id: 'in31', name: '20250221 - Andaman [56].webp', size: 245760, path: '/image_os/gallery/inde/20250221 - Andaman [56].webp' },
+      { id: 'in32', name: '20250221 - Andaman [57].webp', size: 198432, path: '/image_os/gallery/inde/20250221 - Andaman [57].webp' },
+      { id: 'in33', name: '20250221 - Andaman [58].webp', size: 312576, path: '/image_os/gallery/inde/20250221 - Andaman [58].webp' },
+      { id: 'in34', name: '20250221 - Andaman [59].webp', size: 267890, path: '/image_os/gallery/inde/20250221 - Andaman [59].webp' },
+      { id: 'in35', name: '20250221 - Andaman [60].webp', size: 289123, path: '/image_os/gallery/inde/20250221 - Andaman [60].webp' },
+      { id: 'in36', name: '20250321 - Meghalaya [52].webp', size: 234567, path: '/image_os/gallery/inde/20250321 - Meghalaya [52].webp' },
+      { id: 'in37', name: '20250321 - Meghalaya [53].webp', size: 345678, path: '/image_os/gallery/inde/20250321 - Meghalaya [53].webp' },
+      { id: 'in38', name: '20250321 - Meghalaya [54].webp', size: 198765, path: '/image_os/gallery/inde/20250321 - Meghalaya [54].webp' },
+      { id: 'in39', name: '20250321 - Meghalaya [55].webp', size: 276543, path: '/image_os/gallery/inde/20250321 - Meghalaya [55].webp' },
+      { id: 'in40', name: '20250321 - Meghalaya [56].webp', size: 321098, path: '/image_os/gallery/inde/20250321 - Meghalaya [56].webp' },
+      { id: 'in41', name: '20250321 - Meghalaya [57].webp', size: 245760, path: '/image_os/gallery/inde/20250321 - Meghalaya [57].webp' },
+      { id: 'in42', name: '20250321 - Meghalaya [58].webp', size: 198432, path: '/image_os/gallery/inde/20250321 - Meghalaya [58].webp' },
+      { id: 'in43', name: '20250321 - Meghalaya [59].webp', size: 312576, path: '/image_os/gallery/inde/20250321 - Meghalaya [59].webp' },
+      { id: 'in44', name: '20250321 - Meghalaya [60].webp', size: 267890, path: '/image_os/gallery/inde/20250321 - Meghalaya [60].webp' },
+      { id: 'in45', name: '20250321 - Meghalaya [61].webp', size: 289123, path: '/image_os/gallery/inde/20250321 - Meghalaya [61].webp' },
+      { id: 'in46', name: '20250321 - Meghalaya [62].webp', size: 234567, path: '/image_os/gallery/inde/20250321 - Meghalaya [62].webp' },
+      { id: 'in47', name: '20250321 - Meghalaya [63].webp', size: 345678, path: '/image_os/gallery/inde/20250321 - Meghalaya [63].webp' },
+      { id: 'in48', name: '20250321 - Meghalaya [64].webp', size: 198765, path: '/image_os/gallery/inde/20250321 - Meghalaya [64].webp' },
+      { id: 'in49', name: '20250321 - Meghalaya [65].webp', size: 276543, path: '/image_os/gallery/inde/20250321 - Meghalaya [65].webp' },
+      { id: 'in50', name: '20250321 - Meghalaya [66].webp', size: 321098, path: '/image_os/gallery/inde/20250321 - Meghalaya [66].webp' },
+      { id: 'in51', name: '20250412 - Jaipur [28].webp', size: 245760, path: '/image_os/gallery/inde/20250412 - Jaipur [28].webp' },
+      { id: 'in52', name: '20250412 - Jaipur [29].webp', size: 198432, path: '/image_os/gallery/inde/20250412 - Jaipur [29].webp' },
+      { id: 'in53', name: '20250412 - Jaipur [30].webp', size: 312576, path: '/image_os/gallery/inde/20250412 - Jaipur [30].webp' },
+      { id: 'in54', name: '20250412 - Jaipur [31].webp', size: 267890, path: '/image_os/gallery/inde/20250412 - Jaipur [31].webp' },
+      { id: 'in55', name: '20250412 - Jaipur [32].webp', size: 289123, path: '/image_os/gallery/inde/20250412 - Jaipur [32].webp' },
+      { id: 'in56', name: '20250412 - Jaipur [33].webp', size: 234567, path: '/image_os/gallery/inde/20250412 - Jaipur [33].webp' },
+      { id: 'in57', name: '20250412 - Jaipur [34].webp', size: 345678, path: '/image_os/gallery/inde/20250412 - Jaipur [34].webp' },
+      { id: 'in58', name: '20250412 - Jaipur [35].webp', size: 198765, path: '/image_os/gallery/inde/20250412 - Jaipur [35].webp' },
+      { id: 'in59', name: '20250412 - Jaipur [36].webp', size: 276543, path: '/image_os/gallery/inde/20250412 - Jaipur [36].webp' },
+      { id: 'in60', name: '20250412 - Jaipur [37].webp', size: 321098, path: '/image_os/gallery/inde/20250412 - Jaipur [37].webp' },
+      { id: 'in61', name: '20250419 - Udaipur [01].webp', size: 245760, path: '/image_os/gallery/inde/20250419 - Udaipur [01].webp' },
+      { id: 'in62', name: '20250419 - Udaipur [02].webp', size: 198432, path: '/image_os/gallery/inde/20250419 - Udaipur [02].webp' },
+      { id: 'in63', name: '20250419 - Udaipur [03].webp', size: 312576, path: '/image_os/gallery/inde/20250419 - Udaipur [03].webp' },
+      { id: 'in64', name: '20250419 - Udaipur [04].webp', size: 267890, path: '/image_os/gallery/inde/20250419 - Udaipur [04].webp' },
+      { id: 'in65', name: '20250419 - Udaipur [05].webp', size: 289123, path: '/image_os/gallery/inde/20250419 - Udaipur [05].webp' },
+      { id: 'in66', name: '20250419 - Udaipur [06].webp', size: 234567, path: '/image_os/gallery/inde/20250419 - Udaipur [06].webp' },
+      { id: 'in67', name: '20250419 - Udaipur [07].webp', size: 345678, path: '/image_os/gallery/inde/20250419 - Udaipur [07].webp' },
+      { id: 'in68', name: '20250419 - Udaipur [08].webp', size: 198765, path: '/image_os/gallery/inde/20250419 - Udaipur [08].webp' },
+      { id: 'in69', name: '20250419 - Udaipur [09].webp', size: 276543, path: '/image_os/gallery/inde/20250419 - Udaipur [09].webp' },
+      { id: 'in70', name: '20250419 - Udaipur [10].webp', size: 321098, path: '/image_os/gallery/inde/20250419 - Udaipur [10].webp' },
+      { id: 'in71', name: '20250420 - Jodhpur [29].webp', size: 245760, path: '/image_os/gallery/inde/20250420 - Jodhpur [29].webp' },
+      { id: 'in72', name: '20250420 - Jodhpur [30].webp', size: 198432, path: '/image_os/gallery/inde/20250420 - Jodhpur [30].webp' },
+      { id: 'in73', name: '20250420 - Jodhpur [31].webp', size: 312576, path: '/image_os/gallery/inde/20250420 - Jodhpur [31].webp' },
+      { id: 'in74', name: '20250420 - Jodhpur [32].webp', size: 267890, path: '/image_os/gallery/inde/20250420 - Jodhpur [32].webp' },
+      { id: 'in75', name: '20250420 - Jodhpur [33].webp', size: 289123, path: '/image_os/gallery/inde/20250420 - Jodhpur [33].webp' },
+      { id: 'in76', name: '20250420 - Jodhpur [34].webp', size: 234567, path: '/image_os/gallery/inde/20250420 - Jodhpur [34].webp' },
+      { id: 'in77', name: '20250420 - Jodhpur [35].webp', size: 345678, path: '/image_os/gallery/inde/20250420 - Jodhpur [35].webp' },
+      { id: 'in78', name: '20250420 - Jodhpur [36].webp', size: 198765, path: '/image_os/gallery/inde/20250420 - Jodhpur [36].webp' },
+      { id: 'in79', name: '20250420 - Jodhpur [37].webp', size: 276543, path: '/image_os/gallery/inde/20250420 - Jodhpur [37].webp' },
+      { id: 'in80', name: '20250420 - Jodhpur [38].webp', size: 321098, path: '/image_os/gallery/inde/20250420 - Jodhpur [38].webp' },
+      { id: 'in81', name: '20250428 - Goa [01].webp', size: 245760, path: '/image_os/gallery/inde/20250428 - Goa [01].webp' },
+      { id: 'in82', name: '20250428 - Goa [02].webp', size: 198432, path: '/image_os/gallery/inde/20250428 - Goa [02].webp' },
+      { id: 'in83', name: '20250428 - Goa [03].webp', size: 312576, path: '/image_os/gallery/inde/20250428 - Goa [03].webp' },
+      { id: 'in84', name: '20250428 - Goa [04].webp', size: 267890, path: '/image_os/gallery/inde/20250428 - Goa [04].webp' },
+      { id: 'in85', name: '20250428 - Goa [05].webp', size: 289123, path: '/image_os/gallery/inde/20250428 - Goa [05].webp' },
+      { id: 'in86', name: '20250428 - Goa [06].webp', size: 234567, path: '/image_os/gallery/inde/20250428 - Goa [06].webp' },
+      { id: 'in87', name: '20250428 - Goa [07].webp', size: 345678, path: '/image_os/gallery/inde/20250428 - Goa [07].webp' },
+      { id: 'in88', name: '20250428 - Goa [08].webp', size: 198765, path: '/image_os/gallery/inde/20250428 - Goa [08].webp' },
+      { id: 'in89', name: '20250428 - Goa [09].webp', size: 276543, path: '/image_os/gallery/inde/20250428 - Goa [09].webp' }
+    ]
+
+    indeImages.forEach(img => {
+      const file = FileSystemUtils.createFile(
+        img.id,
+        img.name,
+        `/Images/gallery/inde/${img.name}`,
+        'webp',
+        img.size,
+        img.path,
+        Image
+      )
+      FileSystemUtils.addToFolder(indeFolder, file)
+    })
+
+    // Maroc images - All 9 images
+    const marocImages = [
+      { id: 'ma1', name: 'Maroc - 2024 1.webp', size: 245760, path: '/image_os/gallery/maroc/Maroc - 2024 (129).webp' },
+      { id: 'ma2', name: 'Maroc - 2024 2.webp', size: 198432, path: '/image_os/gallery/maroc/Maroc - 2024 (130).webp' },
+      { id: 'ma3', name: 'Maroc - 2024 3.webp', size: 312576, path: '/image_os/gallery/maroc/Maroc - 2024 (131).webp' },
+      { id: 'ma4', name: 'Maroc - 2024 4.webp', size: 267890, path: '/image_os/gallery/maroc/Maroc - 2024 (142).webp' },
+      { id: 'ma5', name: 'Maroc - 2024 5.webp', size: 289123, path: '/image_os/gallery/maroc/Maroc - 2024 (93).webp' },
+      { id: 'ma6', name: 'Maroc - 2024 6.webp', size: 234567, path: '/image_os/gallery/maroc/Maroc - 2024 (86).webp' },
+      { id: 'ma7', name: 'Maroc - 2024 7.webp', size: 345678, path: '/image_os/gallery/maroc/Maroc - 2024 (58).webp' },
+      { id: 'ma8', name: 'Maroc - 2024 8.webp', size: 198765, path: '/image_os/gallery/maroc/Maroc - 2024 (62).webp' },
+      { id: 'ma9', name: 'Maroc - 2024 9.webp', size: 276543, path: '/image_os/gallery/maroc/Maroc - 2024 (84).webp' }
+    ]
+
+    marocImages.forEach(img => {
+      const file = FileSystemUtils.createFile(
+        img.id,
+        img.name,
+        `/Images/gallery/maroc/${img.name}`,
+        'webp',
+        img.size,
+        img.path,
+        Image
+      )
+      FileSystemUtils.addToFolder(marocFolder, file)
+    })
+
+    // New York images - All 9 images
+    const newYorkImages = [
+      { id: 'ny1', name: 'NYC - 2024 1.webp', size: 245760, path: '/image_os/gallery/new york/NYC - 2024 (149).webp' },
+      { id: 'ny2', name: 'NYC - 2024 2.webp', size: 198432, path: '/image_os/gallery/new york/NYC - 2024 (154).webp' },
+      { id: 'ny3', name: 'NYC - 2024 3.webp', size: 312576, path: '/image_os/gallery/new york/NYC - 2024 (182).webp' },
+      { id: 'ny4', name: 'NYC - 2024 4.webp', size: 267890, path: '/image_os/gallery/new york/NYC - 2024 (193).webp' },
+      { id: 'ny5', name: 'NYC - 2024 5.webp', size: 289123, path: '/image_os/gallery/new york/NYC - 2024 (195).webp' },
+      { id: 'ny6', name: 'NYC - 2024 6.webp', size: 234567, path: '/image_os/gallery/new york/NYC - 2024 (80).webp' },
+      { id: 'ny7', name: 'NYC - 2024 7.webp', size: 345678, path: '/image_os/gallery/new york/NYC - 2024 (77).webp' },  
+      { id: 'ny8', name: 'NYC - 2024 8.webp', size: 198765, path: '/image_os/gallery/new york/NYC - 2024 (87).webp' },
+      { id: 'ny9', name: 'NYC - 2024 9.webp', size: 276543, path: '/image_os/gallery/new york/NYC - 2024 (98).webp' }
+    ]
+
+    newYorkImages.forEach(img => {
+      const file = FileSystemUtils.createFile(
+        img.id,
+        img.name,
+        `/Images/gallery/new york/${img.name}`,
+        'webp',
+        img.size,
+        img.path,
+        Image
+      )
+      FileSystemUtils.addToFolder(newYorkFolder, file)
+    })
+
+    // Thailande images - All 17 images
+    const thailandeImages = [
+      { id: 'th1', name: 'Thailande - 2025 1.webp', size: 245760, path: '/image_os/gallery/thailande/20250302 - Thailande [134].webp' },
+      { id: 'th2', name: 'Thailande - 2025 2.webp', size: 198432, path: '/image_os/gallery/thailande/20250302 - Thailande [138].webp' },
+      { id: 'th3', name: 'Thailande - 2025 3.webp', size: 312576, path: '/image_os/gallery/thailande/20250302 - Thailande [143].webp' },
+      { id: 'th4', name: 'Thailande - 2025 4.webp', size: 267890, path: '/image_os/gallery/thailande/20250302 - Thailande [146].webp' },
+      { id: 'th5', name: 'Thailande - 2025 5.webp', size: 289123, path: '/image_os/gallery/thailande/20250302 - Thailande [147].webp' },
+      { id: 'th6', name: 'Thailande - 2025 6.webp', size: 234567, path: '/image_os/gallery/thailande/20250302 - Thailande [162].webp' },
+      { id: 'th7', name: 'Thailande - 2025 7.webp', size: 345678, path: '/image_os/gallery/thailande/20250302 - Thailande [165].webp' },
+      { id: 'th8', name: 'Thailande - 2025 8.webp', size: 198765, path: '/image_os/gallery/thailande/20250302 - Thailande [173].webp' },
+      { id: 'th9', name: 'Thailande - 2025 9.webp', size: 276543, path: '/image_os/gallery/thailande/20250303 - Thailande [125].webp' },
+      { id: 'th10', name: 'Thailande - 2025 10.webp', size: 321098, path: '/image_os/gallery/thailande/20250303 - Thailande [131].webp' },
+      { id: 'th11', name: 'Thailande - 2025 11.webp', size: 245760, path: '/image_os/gallery/thailande/20250304 - Thailande [107].webp' },
+      { id: 'th12', name: 'Thailande - 2025 12.webp', size: 198432, path: '/image_os/gallery/thailande/20250304 - Thailande [110].webp' },
+      { id: 'th13', name: 'Thailande - 2025 13.webp', size: 312576, path: '/image_os/gallery/thailande/20250306 - Thailande [069].webp' },
+      { id: 'th14', name: 'Thailande - 2025 14.webp', size: 267890, path: '/image_os/gallery/thailande/20250312 - Thailande [061].webp' },
+      { id: 'th15', name: 'Thailande - 2025 15.webp', size: 289123, path: '/image_os/gallery/thailande/20250315 - Thailande [044].webp' },
+      { id: 'th16', name: 'Thailande - 2025 16.webp', size: 234567, path: '/image_os/gallery/thailande/20250316 - Thailande [032].webp' },
+      { id: 'th17', name: 'Thailande - 2025 17.webp', size: 345678, path: '/image_os/gallery/thailande/20250316 - Thailande [033].webp' }
+    ]
+
+    thailandeImages.forEach(img => {
+      const file = FileSystemUtils.createFile(
+        img.id,
+        img.name,
+        `/Images/gallery/thailande/${img.name}`,
+        'webp',
+        img.size,
+        img.path,
+        Image
+      )
+      FileSystemUtils.addToFolder(thailandeFolder, file)
     })
     
     // Create about folder files
@@ -804,9 +1233,9 @@ const initialState: OSState = {
     autoLogin: false,
     language: 'en',
     backgroundConfig: {
-      type: 'component' as BackgroundType,
-      componentName: 'Aurora',
-      componentProps: {
+      type: 'component',
+      component: () => null, // Placeholder component
+      props: {
         colorStops: ['#5227FF', '#7cff67', '#5227FF'],
         amplitude: 1.0,
         blend: 0.5
@@ -1230,7 +1659,7 @@ function osReducer(state: OSState, action: OSAction): OSState {
     }
 
     case 'SELECT_FILE': {
-      const { itemId, multiSelect } = action.payload
+      const { fileId: itemId, multiSelect } = action.payload
       const selectedItems = new Set(state.fileSystem.selectedItems)
       
       if (multiSelect) {
@@ -1658,7 +2087,7 @@ export function useOS() {
   const actionDispatchers = Object.fromEntries(
     Object.entries(osActions).map(([key, actionCreator]) => [
       key,
-      (...args: any[]) => context.dispatch(actionCreator(...args))
+      (...args: any[]) => context.dispatch((actionCreator as any)(...args))
     ])
   )
   
@@ -1795,18 +2224,18 @@ export const osActions = {
   toggleNotificationCenter: () => ({ type: 'TOGGLE_NOTIFICATION_CENTER' as const }),
 
   // File System
-  createFile: (file: Omit<OSFile, 'id' | 'createdAt' | 'modifiedAt'>) => ({
+  createFile: (parentPath: string, file: Omit<OSFile, 'id' | 'createdAt' | 'modifiedAt'>) => ({
     type: 'CREATE_FILE' as const,
-    payload: { file }
+    payload: { parentPath, file }
   }),
-  deleteFile: (fileId: string) => ({ type: 'DELETE_FILE' as const, payload: { fileId } }),
-  renameFile: (fileId: string, newName: string) => ({
+  deleteFile: (fileId: string, itemPath: string) => ({ type: 'DELETE_FILE' as const, payload: { fileId, itemPath } }),
+  renameFile: (fileId: string, itemPath: string, newName: string) => ({
     type: 'RENAME_FILE' as const,
-    payload: { fileId, newName }
+    payload: { fileId, itemPath, newName }
   }),
-  moveFile: (fileId: string, newParentId: string) => ({
+  moveFile: (fileId: string, sourcePath: string, targetPath: string, newParentId: string) => ({
     type: 'MOVE_FILE' as const,
-    payload: { fileId, newParentId }
+    payload: { fileId, sourcePath, targetPath, newParentId }
   }),
   selectFile: (fileId: string, multiSelect?: boolean) => ({
     type: 'SELECT_FILE' as const,
@@ -1914,13 +2343,19 @@ export const osUtils = {
   
   // File utilities
   getFileById: (state: OSState, fileId: string) => 
-    state.files.find(f => f.id === fileId),
+    FileSystemUtils.getAllFiles(state.fileSystem.root).find(f => f.id === fileId),
   
-  getFilesByParent: (state: OSState, parentId: string | null) => 
-    state.files.filter(f => f.parentId === parentId),
+  getFilesByParent: (state: OSState, parentPath: string) => {
+    const parentFolder = FileSystemUtils.findItemByPath(state.fileSystem.root, parentPath)
+    if (!parentFolder || parentFolder.type !== 'folder') return []
+    return Array.from((parentFolder as OSFolder).children.values()).filter(item => item.type === 'file') as OSFile[]
+  },
   
-  getCurrentDirectoryFiles: (state: OSState) => 
-    state.files.filter(f => f.parentId === state.currentDirectory),
+  getCurrentDirectoryFiles: (state: OSState) => {
+    const currentFolder = FileSystemUtils.findItemByPath(state.fileSystem.root, state.fileSystem.currentPath)
+    if (!currentFolder || currentFolder.type !== 'folder') return []
+    return Array.from((currentFolder as OSFolder).children.values()).filter(item => item.type === 'file') as OSFile[]
+  },
   
   // Notification utilities
   getUnreadNotifications: (state: OSState) => 

@@ -44,7 +44,7 @@ const ComponentBackground = memo<ComponentBackgroundProps>(({
             className
           )}
         >
-          Component "{component}" not found
+          Component &quot;{component}&quot; not found
         </div>
       )
     }

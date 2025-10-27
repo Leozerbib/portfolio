@@ -71,7 +71,7 @@ export default function Dialogs({
           <DialogHeader>
             <DialogTitle>Rename {renameDialog.item?.name}</DialogTitle>
             <DialogDescription>
-              Enter a new name for "{renameDialog.item?.name}".
+              Enter a new name for {renameDialog.item?.name}.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">

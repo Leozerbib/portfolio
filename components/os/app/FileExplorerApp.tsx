@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { useOS } from '@/hooks/useOS'
-import { FileSystemUtils, OSFileSystemItem, OSFile, OSFolder } from '@/hooks/useOS'
+import { FileSystemUtils, OSFileSystemItem, OSFile } from '@/hooks/useOS'
 import { cn } from '@/lib/utils'
 
 // Import modular components
@@ -107,7 +107,7 @@ export default function FileExplorerApp({ className, initialPath = '/' }: FileEx
     // Update current directory in OS state
     dispatch({
       type: 'CHANGE_DIRECTORY',
-      payload: { path }
+      payload: { directoryId: path }
     })
   }, [dispatch])
 
@@ -123,7 +123,7 @@ export default function FileExplorerApp({ className, initialPath = '/' }: FileEx
       }))
       dispatch({ 
         type: 'CHANGE_DIRECTORY', 
-        payload: { path } 
+        payload: { directoryId: path } 
       })
     }
   }, [canGoBack, explorerState.historyIndex, explorerState.history, dispatch])
@@ -140,7 +140,7 @@ export default function FileExplorerApp({ className, initialPath = '/' }: FileEx
       }))
       dispatch({ 
         type: 'CHANGE_DIRECTORY', 
-        payload: { path } 
+        payload: { directoryId: path } 
       })
     }
   }, [canGoForward, explorerState.historyIndex, explorerState.history, dispatch])
@@ -177,13 +177,6 @@ export default function FileExplorerApp({ className, initialPath = '/' }: FileEx
     })
   }, [])
 
-  const selectAll = useCallback(() => {
-    setExplorerState(prev => ({
-      ...prev,
-      selectedItems: new Set(currentItems.map(item => item.id))
-    }))
-  }, [currentItems])
-
   const clearSelection = useCallback(() => {
     setExplorerState(prev => ({
       ...prev,
@@ -192,7 +185,7 @@ export default function FileExplorerApp({ className, initialPath = '/' }: FileEx
   }, [])
 
   // File Operations
-  const handleDoubleClick = useCallback((item: OSFileSystemItem) => {
+  const handleItemDoubleClick = useCallback((item: OSFileSystemItem) => {
     const isFolder = 'children' in item
     if (isFolder) {
       navigateToPath(item.path)
@@ -200,16 +193,16 @@ export default function FileExplorerApp({ className, initialPath = '/' }: FileEx
       // Open file with associated app
       const file = item as OSFile
       if (file.associatedApp) {
-        dispatch({
-          type: 'OPEN_WINDOW',
-          payload: { 
-            appId: file.associatedApp,
-            args: { filePath: file.path }
-          }
-        })
+        const app = state.apps.find(app => app.id === file.associatedApp)
+        if (app) {
+          dispatch({
+            type: 'OPEN_WINDOW',
+            payload: { app }
+          })
+        }
       }
     }
-  }, [navigateToPath, dispatch])
+  }, [navigateToPath, dispatch, state.apps])
 
   const openCreateDialog = useCallback((type: 'file' | 'folder') => {
     setCreateDialog({
@@ -248,17 +241,45 @@ export default function FileExplorerApp({ className, initialPath = '/' }: FileEx
       dispatch({
         type: 'CREATE_FOLDER',
         payload: {
-          name: createDialog.name,
+          folderName: createDialog.name,
           parentPath: explorerState.currentPath
         }
       })
     } else {
+      const extension = createDialog.name.includes('.') 
+        ? createDialog.name.split('.').pop() || 'txt'
+        : 'txt'
+      
+      const fileName = createDialog.name.includes('.') 
+        ? createDialog.name 
+        : `${createDialog.name}.txt`
+
       dispatch({
         type: 'CREATE_FILE',
         payload: {
-          name: createDialog.name,
           parentPath: explorerState.currentPath,
-          content: ''
+          file: {
+            type: 'file',
+            name: fileName,
+            path: `${explorerState.currentPath}/${fileName}`,
+            extension,
+            size: 0,
+            mimeType: FileSystemUtils.getMimeType(extension),
+            content: '',
+            icon: FileSystemUtils.getFileIcon(extension),
+            isExecutable: false,
+            permissions: {
+              read: true,
+              write: true,
+              execute: false
+            },
+            owner: 'user',
+            isHidden: false,
+            isSystem: false,
+            tags: [],
+            metadata: {},
+            accessedAt: Date.now()
+          }
         }
       })
     }
@@ -278,7 +299,8 @@ export default function FileExplorerApp({ className, initialPath = '/' }: FileEx
     dispatch({
       type: 'RENAME_FILE',
       payload: {
-        itemId: renameDialog.item.id,
+        fileId: renameDialog.item.id,
+        itemPath: renameDialog.item.path,
         newName: renameDialog.newName
       }
     })
@@ -290,13 +312,19 @@ export default function FileExplorerApp({ className, initialPath = '/' }: FileEx
     deleteDialog.items.forEach(item => {
       dispatch({
         type: 'DELETE_FILE',
-        payload: { itemId: item.id }
+        payload: { fileId: item.id, itemPath: item.path }
       })
     })
 
     setDeleteDialog({ isOpen: false, items: [] })
     clearSelection()
   }, [deleteDialog.items, dispatch, clearSelection])
+
+  const copyToClipboard = useCallback((items: OSFileSystemItem[]) => {
+    // For now, just log the copy action
+    console.log('Copying items to clipboard:', items)
+    // TODO: Implement actual clipboard functionality
+  }, [])
 
   return (
     <Card className={cn("flex h-full border-0 gap-0", className)}>
@@ -338,7 +366,7 @@ export default function FileExplorerApp({ className, initialPath = '/' }: FileEx
             viewMode={explorerState.viewMode}
             searchQuery={explorerState.searchQuery}
             onItemSelect={toggleItemSelection}
-            onItemDoubleClick={handleDoubleClick}
+            onItemDoubleClick={handleItemDoubleClick}
             onItemRename={openRenameDialog}
             onItemDelete={(item) => openDeleteDialog([item])}
             onItemCopy={(item) => copyToClipboard([item])}

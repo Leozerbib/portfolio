@@ -3,7 +3,6 @@
 import { useCallback, useMemo, useEffect, useState } from "react"
 import { useOS } from "@/hooks/useOS"
 import { useTheme } from "@/hooks/useTheme"
-import Color from 'color'
 import { 
   EnhancedSystemSettings, 
   BackgroundConfig, 
@@ -22,15 +21,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch"
 import { Input } from "@/components/ui/input"
 import { Slider } from "@/components/ui/slider"
-import { Separator } from "@/components/ui/separator"
 import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
 import { AspectRatio } from '@/components/ui/aspect-ratio'
-import { backgroundComponentsConfig, getComponentNames, getComponentConfig, ComponentProperty } from '@/lib/background-components-config'
-import ComponentBackground, { ComponentBackgroundProps } from '@/components/os/background/ComponentBackground'
-import ImageBackground, { ImageBackgroundProps } from '@/components/os/background/ImageBackground'
-import MonocolorBackground, { MonocolorBackgroundProps } from '@/components/os/background/MonocolorBackground'
-import GradientBackground, { GradientBackgroundProps } from '@/components/os/background/GradientBackground'
+import { backgroundComponentsConfig, getComponentConfig, } from '@/lib/background-components-config'
+import ComponentBackground from '@/components/os/background/ComponentBackground'
+import ImageBackground from '@/components/os/background/ImageBackground'
+import MonocolorBackground from '@/components/os/background/MonocolorBackground'
+import GradientBackground from '@/components/os/background/GradientBackground'
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
 import { ColorPicker, ColorPickerCompact } from '@/components/ui/color-picker'
@@ -40,6 +37,7 @@ import Image from "next/image"
 
 export default function SettingsApp() {
   const { state, actions } = useOS()
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { theme, setTheme } = useTheme()
 
   // Local state for form management
@@ -196,22 +194,6 @@ export default function SettingsApp() {
 
     handleStyleSettingsUpdate({ background: updatedBackground })
   }, [getCurrentStyleSettings, handleStyleSettingsUpdate])
-
-  const getBackgroundValue = useCallback(() => {
-    const currentStyleSettings = getCurrentStyleSettings()
-    const background = currentStyleSettings.background
-
-    switch (background.type) {
-      case 'monocolor':
-        return background.color || '#000000'
-      case 'image':
-        return background.url || ''
-      case 'gradient':
-        return background.colors?.[0] || '#3b82f6'
-      default:
-        return ''
-    }
-  }, [getCurrentStyleSettings])
 
   // Color change handlers for ColorPicker components
   const handlePrimaryColorChange = useCallback((hex: string) => {
@@ -878,12 +860,34 @@ export default function SettingsApp() {
                   <Switch
                     id="notifications-enabled"
                     checked={localSettings.notificationPreferences?.enabled ?? true}
-                    onCheckedChange={(checked) => handleLocalUpdate({ 
-                      notificationPreferences: { 
-                        ...localSettings.notificationPreferences, 
-                        enabled: checked 
-                      } 
-                    })}
+                    onCheckedChange={(checked) => {
+                      const defaultPrefs = {
+                        enabled: true,
+                        sound: true,
+                        desktop: true,
+                        email: false,
+                        push: true,
+                        categories: {
+                          system: true,
+                          apps: true,
+                          updates: true,
+                          security: true,
+                        },
+                        quietHours: {
+                          enabled: false,
+                          start: '22:00',
+                          end: '08:00',
+                        },
+                      };
+                      
+                      handleLocalUpdate({ 
+                        notificationPreferences: { 
+                          ...defaultPrefs,
+                          ...localSettings.notificationPreferences,
+                          enabled: checked 
+                        } 
+                      });
+                    }}
                   />
                 </div>
 
@@ -892,12 +896,34 @@ export default function SettingsApp() {
                   <Switch
                     id="notifications-sound"
                     checked={localSettings.notificationPreferences?.sound ?? true}
-                    onCheckedChange={(checked) => handleLocalUpdate({ 
-                      notificationPreferences: { 
-                        ...localSettings.notificationPreferences, 
-                        sound: checked 
-                      } 
-                    })}
+                    onCheckedChange={(checked) => {
+                      const defaultPrefs = {
+                        enabled: true,
+                        sound: true,
+                        desktop: true,
+                        email: false,
+                        push: true,
+                        categories: {
+                          system: true,
+                          apps: true,
+                          updates: true,
+                          security: true,
+                        },
+                        quietHours: {
+                          enabled: false,
+                          start: '22:00',
+                          end: '08:00',
+                        },
+                      };
+                      
+                      handleLocalUpdate({ 
+                        notificationPreferences: { 
+                          ...defaultPrefs,
+                          ...localSettings.notificationPreferences,
+                          sound: checked 
+                        } 
+                      });
+                    }}
                   />
                 </div>
 
@@ -906,12 +932,34 @@ export default function SettingsApp() {
                   <Switch
                     id="notifications-desktop"
                     checked={localSettings.notificationPreferences?.desktop ?? true}
-                    onCheckedChange={(checked) => handleLocalUpdate({ 
-                      notificationPreferences: { 
-                        ...localSettings.notificationPreferences, 
-                        desktop: checked 
-                      } 
-                    })}
+                    onCheckedChange={(checked) => {
+                      const defaultPrefs = {
+                        enabled: true,
+                        sound: true,
+                        desktop: true,
+                        email: false,
+                        push: true,
+                        categories: {
+                          system: true,
+                          apps: true,
+                          updates: true,
+                          security: true,
+                        },
+                        quietHours: {
+                          enabled: false,
+                          start: '22:00',
+                          end: '08:00',
+                        },
+                      };
+                      
+                      handleLocalUpdate({ 
+                        notificationPreferences: { 
+                          ...defaultPrefs,
+                          ...localSettings.notificationPreferences,
+                          desktop: checked 
+                        } 
+                      });
+                    }}
                   />
                 </div>
 
@@ -920,12 +968,34 @@ export default function SettingsApp() {
                   <Switch
                     id="notifications-push"
                     checked={localSettings.notificationPreferences?.push ?? true}
-                    onCheckedChange={(checked) => handleLocalUpdate({ 
-                      notificationPreferences: { 
-                        ...localSettings.notificationPreferences, 
-                        push: checked 
-                      } 
-                    })}
+                    onCheckedChange={(checked) => {
+                      const defaultPrefs = {
+                        enabled: true,
+                        sound: true,
+                        desktop: true,
+                        email: false,
+                        push: true,
+                        categories: {
+                          system: true,
+                          apps: true,
+                          updates: true,
+                          security: true,
+                        },
+                        quietHours: {
+                          enabled: false,
+                          start: '22:00',
+                          end: '08:00',
+                        },
+                      };
+                      
+                      handleLocalUpdate({ 
+                        notificationPreferences: { 
+                          ...defaultPrefs,
+                          ...localSettings.notificationPreferences,
+                          push: checked 
+                        } 
+                      });
+                    }}
                   />
                 </div>
               </CardContent>

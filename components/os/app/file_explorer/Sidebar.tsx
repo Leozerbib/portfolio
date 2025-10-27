@@ -1,3 +1,4 @@
+/* eslint-disable jsx-a11y/alt-text */
 'use client'
 
 import React from 'react'
@@ -5,13 +6,10 @@ import {
   Home, 
   Folder, 
   FileText, 
-  Image, 
-  Music, 
-  Video, 
+  Image,
   Download,
   Trash2,
   Star,
-  Clock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -24,12 +22,6 @@ const quickAccessItems = [
   { name: 'Documents', path: '/Documents', icon: FileText },
   { name: 'Pictures', path: '/Images', icon: Image },
   { name: 'Downloads', path: '/Downloads', icon: Download },
-]
-
-const recentItems = [
-  { name: 'Recent Projects', path: '/Documents/Projects' },
-  { name: 'Screenshots', path: '/Pictures/Screenshots' },
-  { name: 'Work Files', path: '/Documents/Work' },
 ]
 
 export default function Sidebar({ 

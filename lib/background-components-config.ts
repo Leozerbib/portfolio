@@ -1,12 +1,7 @@
 import { ComponentType } from 'react';
-import Aurora from '@/components/os/background/native/Aurora';
 import Dither from '@/components/os/background/native/Dither';
 import DotGrid from '@/components/os/background/native/DotGrid';
-import FaultyTerminal from '@/components/os/background/native/FaultyTerminal';
-import Iridescence from '@/components/os/background/native/Iridescence';
-import Particles from '@/components/os/background/native/Particles';
 import PixelBlast from '@/components/os/background/native/PixelBlast';
-import Plasma from '@/components/os/background/native/Plasma';
 import Silk from '@/components/os/background/native/Silk';
 import Threads from '@/components/os/background/native/Threads';
 

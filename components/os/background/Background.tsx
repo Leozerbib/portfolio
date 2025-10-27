@@ -26,7 +26,7 @@ const Background = memo<BackgroundProps>(({ className }) => {
           <ImageBackground
             imageUrl={config.url}
             position={config.position}
-            size={config.size}
+            size={config.size as 'cover' | 'contain' | 'auto'}
             repeat={config.repeat}
           />
         )

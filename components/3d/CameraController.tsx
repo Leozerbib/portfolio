@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import { useEffect } from 'react'
 import { useCameraAnimation } from '@/hooks/useCameraAnimation'
 import { useThree } from '@react-three/fiber'
 

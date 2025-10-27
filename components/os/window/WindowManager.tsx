@@ -3,7 +3,6 @@
 import { useOS } from '@/hooks/useOS'
 import { Window } from './Window'
 import { useEffect, useRef, useState } from 'react'
-import { animate } from 'animejs'
 import { cn } from '@/lib/utils'
 
 export function WindowManager() {
@@ -34,10 +33,6 @@ export function WindowManager() {
   }, [])
 
   const windowsToRender = visibleWindows
-
-  if (containerRef.current) {
-    const pe = getComputedStyle(containerRef.current).pointerEvents
-  } 
 
   // Group windows if any are grouped
   const groupedWindows = state.windowGroups.filter(group => 

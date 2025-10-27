@@ -11,9 +11,7 @@ import {
   ColorPickerAlpha,
   ColorPickerEyeDropper,
   ColorPickerOutput,
-  ColorPickerFormat,
-  type ColorPickerProps as ShadcnColorPickerProps
-} from '@/components/ui/shadcn-io/color-picker';
+  ColorPickerFormat} from '@/components/ui/shadcn-io/color-picker';
 
 export interface ColorPickerProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange' | 'value' | 'defaultValue'> {
   /**
@@ -72,7 +70,13 @@ export const ColorPicker = React.forwardRef<HTMLDivElement, ColorPickerProps>(
       if (!onChange || disabled) return;
       
       try {
-        const [r, g, b, a = 1] = colorArray;
+        // Ensure colorArray is an array before destructuring
+        if (!Array.isArray(colorArray)) {
+          console.warn('Invalid color array received:', colorArray);
+          return;
+        }
+        
+        const [r, g, b, a = 1] = colorArray as [number, number, number, number?];
         
         // Validate color values to prevent NaN
         if (
@@ -158,18 +162,20 @@ export const ColorPickerCompact = React.forwardRef<HTMLDivElement, ColorPickerPr
     label,
     className,
     disabled = false,
-    // Filter out custom props that shouldn't be passed to DOM
-    showEyeDropper,
-    showAlpha,
-    showFormat,
     ...domProps
   }, ref) => {
     const handleColorChange = React.useCallback((colorArray: Parameters<typeof Color.rgb>[0]) => {
       if (!onChange || disabled) return;
       
       try {
-        const [r, g, b, a] = colorArray;
-        const color = Color.rgb(r, g, b, a);
+        // Ensure colorArray is an array before destructuring
+        if (!Array.isArray(colorArray)) {
+          console.warn('Invalid color array received:', colorArray);
+          return;
+        }
+        
+        const [r, g, b, a = 1] = colorArray as [number, number, number, number?];
+        const color = Color.rgb(r, g, b, a ?? 1);
         const hexColor = a < 1 ? color.hexa() : color.hex();
         onChange(hexColor);
       } catch (error) {
@@ -203,5 +209,3 @@ export const ColorPickerCompact = React.forwardRef<HTMLDivElement, ColorPickerPr
 );
 
 ColorPickerCompact.displayName = 'ColorPickerCompact';
-
-export { type ColorPickerProps };

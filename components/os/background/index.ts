@@ -1,5 +1,5 @@
 export { default as Background } from './Background'
-export type { BackgroundConfig, BackgroundType, BackgroundProps } from './Background'
+export type { BackgroundProps } from './Background'
 
 export { default as ImageBackground } from './ImageBackground'
 export type { ImageBackgroundProps } from './ImageBackground'

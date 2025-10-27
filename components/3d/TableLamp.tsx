@@ -31,7 +31,8 @@ export function TableLamp({
   ...props 
 }: TableLampProps) {
   const group = useRef<THREE.Group>(null!)
-  const { nodes, materials } = useGLTF('/table_lamp.glb') as GLTFResult
+  const gltf = useGLTF('/table_lamp.glb')
+  const { nodes, materials } = gltf as unknown as GLTFResult
   const { toggleTheme } = useTheme()
   
   // Lamp state

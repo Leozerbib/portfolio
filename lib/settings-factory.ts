@@ -15,8 +15,11 @@ export class SettingsFactory {
    * Creates a settings object with validation
    */
   static createValidated(settings: Partial<EnhancedSystemSettings>): EnhancedSystemSettings {
-    const validatedSettings = SettingsManager.validate(settings)
-    return SettingsManager.merge(validatedSettings)
+    const isValid = SettingsManager.validate(settings)
+    if (!isValid) {
+      throw new Error('Invalid settings provided')
+    }
+    return SettingsManager.merge(settings)
   }
 
   /**
@@ -30,11 +33,12 @@ export class SettingsFactory {
           ...defaultSettings.styleSettings,
           background: {
             type: 'monocolor' as const,
-            value: '#ffffff'
+            color: '#ffffff'
           },
           loginBackground: {
             type: 'gradient' as const,
-            value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            colors: ['#667eea', '#764ba2'],
+            direction: 'to-br' as const
           },
           primaryColor: '#3b82f6',
           secondaryColor: '#8b5cf6'
@@ -46,11 +50,12 @@ export class SettingsFactory {
           ...defaultSettings.styleSettings,
           background: {
             type: 'monocolor' as const,
-            value: '#0f0f23'
+            color: '#0f0f23'
           },
           loginBackground: {
             type: 'gradient' as const,
-            value: 'linear-gradient(135deg, #1e3a8a 0%, #7c3aed 100%)'
+            colors: ['#1e3a8a', '#7c3aed'],
+            direction: 'to-br' as const
           },
           primaryColor: '#60a5fa',
           secondaryColor: '#a78bfa'
@@ -73,48 +78,28 @@ export class SettingsFactory {
     const localeMap: Record<string, Partial<EnhancedSystemSettings>> = {
       'en-US': {
         language: 'en',
-        dateFormat: {
-          format: 'MM/dd/yyyy',
-          separator: '/',
-          order: 'mdy'
-        },
-        localeType: 'en-US'
+        dateFormat: 'MM/DD/YYYY',
+        dateType: 'en-US'
       },
       'en-GB': {
         language: 'en',
-        dateFormat: {
-          format: 'dd/MM/yyyy',
-          separator: '/',
-          order: 'dmy'
-        },
-        localeType: 'en-GB'
+        dateFormat: 'DD/MM/YYYY',
+        dateType: 'en-GB'
       },
       'fr-FR': {
         language: 'fr',
-        dateFormat: {
-          format: 'dd/MM/yyyy',
-          separator: '/',
-          order: 'dmy'
-        },
-        localeType: 'fr-FR'
+        dateFormat: 'DD/MM/YYYY',
+        dateType: 'fr-FR'
       },
       'de-DE': {
-        language: 'de',
-        dateFormat: {
-          format: 'dd.MM.yyyy',
-          separator: '.',
-          order: 'dmy'
-        },
-        localeType: 'de-DE'
+        language: 'en', // Using 'en' as fallback since 'de' is not in Language type
+        dateFormat: 'DD/MM/YYYY',
+        dateType: 'de-DE'
       },
       'es-ES': {
-        language: 'es',
-        dateFormat: {
-          format: 'dd/MM/yyyy',
-          separator: '/',
-          order: 'dmy'
-        },
-        localeType: 'es-ES'
+        language: 'en', // Using 'en' as fallback since 'es' is not in Language type
+        dateFormat: 'DD/MM/YYYY',
+        dateType: 'es-ES'
       }
     }
 
@@ -150,7 +135,7 @@ export class SettingsFactory {
 
     return this.createValidated({
       theme: prefersDark ? 'dark' : 'light',
-      localeType: systemLocale as any,
+      dateType: systemLocale as any,
       styleSettings: {
         ...defaultSettings.styleSettings,
         animations: !reducedMotion
@@ -171,22 +156,35 @@ export class SettingsFactory {
         sound: legacySettings.sounds ?? true,
         desktop: true,
         email: false,
-        push: true
+        push: true,
+        categories: {
+          system: true,
+          apps: true,
+          updates: true,
+          security: true
+        },
+        quietHours: {
+          enabled: false,
+          start: '22:00',
+          end: '08:00'
+        }
       },
       styleSettings: {
         background: {
           type: 'image',
-          value: legacySettings.wallpaper || '/wallpapers/default.jpg'
+          url: legacySettings.wallpaper || '/wallpapers/default.jpg'
         },
         loginBackground: {
           type: 'gradient',
-          value: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+          colors: ['#667eea', '#764ba2'],
+          direction: 'to-br'
         },
         primaryColor: legacySettings.accentColor || '#3b82f6',
         secondaryColor: legacySettings.secondaryColor || '#8b5cf6',
         borderRadius: legacySettings.borderRadius || 'md',
         fontSize: legacySettings.fontSize || 'medium',
-        animations: legacySettings.animations ?? true
+        animations: legacySettings.animations ?? true,
+        sounds: true
       }
     })
   }

@@ -172,7 +172,7 @@ export const Plasma: React.FC<PlasmaProps> = ({
     let raf = 0;
     const t0 = performance.now();
     const loop = (t: number) => {
-      let timeValue = (t - t0) * 0.001;
+      const timeValue = (t - t0) * 0.001;
 
       if (direction === 'pingpong') {
         const cycle = Math.sin(timeValue * 0.5) * directionMultiplier;
@@ -192,6 +192,7 @@ export const Plasma: React.FC<PlasmaProps> = ({
         containerRef.current.removeEventListener('mousemove', handleMouseMove);
       }
       try {
+        // eslint-disable-next-line react-hooks/exhaustive-deps
         containerRef.current?.removeChild(canvas);
       } catch {}
     };

@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { cn } from '@/lib/utils'
 import { FileItemProps } from './types'
-import { OSFile, OSFolder } from '@/hooks/useOS'
+import { OSFile } from '@/hooks/useOS'
 
 // File type icon mapping
 const getFileIcon = (fileName: string, isFolder: boolean) => {
@@ -207,7 +207,7 @@ export default function FileItem({
               </span>
             )}
             <span className="w-32 text-right">
-              {formatDate(item.modifiedAt)}
+              {formatDate(new Date(item.modifiedAt))}
             </span>
           </div>
 

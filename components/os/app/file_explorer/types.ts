@@ -1,6 +1,6 @@
 'use client'
 
-import { OSFileSystemItem, OSFile, OSFolder } from '@/hooks/useOS'
+import { OSFileSystemItem } from '@/hooks/useOS'
 
 // Main File Explorer Interfaces
 export interface FileExplorerAppProps {

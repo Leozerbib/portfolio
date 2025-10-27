@@ -27,7 +27,7 @@ export function useTaskbarAutoHide(config: Partial<TaskbarAutoHideConfig> = {}) 
     windowOverlapping: false
   })
   
-  const hideTimeoutRef = useRef<NodeJS.Timeout>()
+  const hideTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   // Check if any window overlaps with taskbar area
   const checkWindowOverlap = useCallback(() => {
@@ -42,9 +42,6 @@ export function useTaskbarAutoHide(config: Partial<TaskbarAutoHideConfig> = {}) 
     const taskbarTop = screenHeight - finalConfig.taskbarHeight
     
     const hasOverlap = visibleWindows.some(window => {
-      console.log('window', window)
-      console.log('window.size', window.size)
-      console.log('taskbarTop', taskbarTop)
 
       const windowBottom = window.position.y + window.size.height
       

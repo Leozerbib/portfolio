@@ -5,13 +5,11 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { TerminalApp } from '../app/TerminalApp'
-import { PortfolioApp } from '../app/PortfolioApp'
-import { ProjectsApp } from '../app/ProjectsApp'
-import { AboutApp } from '../app/AboutApp'
-import { ContactApp } from '../app/ContactApp'
+import { EmailApp } from '../app/EmailApp'
 import SettingsApp from '../app/SettingsApp'
 import FileExplorerApp from '../app/FileExplorerApp'
 import GalleryApp from '../app/GalleryApp'
+import { MarkdownApp } from '../app/MarkdownApp'
 import { cn } from '@/lib/utils'
 
 interface WindowContentProps {
@@ -23,20 +21,16 @@ export function WindowContent({ window }: WindowContentProps) {
     switch (window.component) {
       case 'Terminal':
         return <TerminalApp />
-      case 'Portfolio':
-        return <PortfolioApp />
-      case 'Projects':
-        return <ProjectsApp />
-      case 'About':
-        return <AboutApp />
-      case 'Contact':
-        return <ContactApp />
+      case 'Email':
+        return <EmailApp />
       case 'Settings':
         return <SettingsApp />
       case 'FileManager':
         return <FileExplorerApp />
       case 'Gallery':
         return <GalleryApp windowId={window.id} />
+      case 'MarkdownApp':
+        return <MarkdownApp />
       default:
         return (
           <Card className="h-full border-0 shadow-none">

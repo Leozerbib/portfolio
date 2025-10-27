@@ -7,11 +7,12 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { StartMenu } from './StartMenu'
-import { Volleyball, LogOut, Menu, Settings, Sun, Moon, Monitor, Globe, Folder } from 'lucide-react'
+import { Volleyball, LogOut, Settings, Sun, Moon, Monitor, Globe, Folder } from 'lucide-react'
 import { DateFormat, LocaleType, Language, Theme } from '@/lib/settings'
 import { useTheme } from '@/hooks/useTheme'
 
 export function TopBar() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { theme, setTheme } = useTheme()
   const { state, dispatch } = useOS()
   const [showStartMenu, setShowStartMenu] = useState(false)
@@ -123,21 +124,14 @@ export function TopBar() {
     // Handle different date formats
     switch (dateFormat) {
       case 'DD/MM/YYYY':
-      case 'DD-MM-YYYY':
         options.day = '2-digit'
         options.month = '2-digit'
         options.year = 'numeric'
         break
       case 'MM/DD/YYYY':
-      case 'MM-DD-YYYY':
         options.day = '2-digit'
         options.month = '2-digit'
         options.year = 'numeric'
-        break
-      case 'YYYY-MM-DD':
-        options.year = 'numeric'
-        options.month = '2-digit'
-        options.day = '2-digit'
         break
       default:
         // Keep default options for weekday display
@@ -150,12 +144,7 @@ export function TopBar() {
   const getLanguageDisplayName = (language: Language): string => {
     const languageNames: Record<Language, string> = {
       'en': 'EN',
-      'fr': 'FR',
-      'de': 'DE',
-      'es': 'ES',
-      'it': 'IT',
-      'ja': 'JA',
-      'zh': 'ZH'
+      'fr': 'FR'
     }
     return languageNames[language] || 'EN'
   }

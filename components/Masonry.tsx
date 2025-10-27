@@ -5,18 +5,17 @@ import { gsap } from 'gsap';
 import Image from 'next/image';
 import { cn } from '@/lib/utils';
 
-// Hook for responsive breakpoints
-const useMedia = (queries: string[], values: number[], defaultValue: number): number => {
-  const get = () => values[queries.findIndex(q => matchMedia(q).matches)] ?? defaultValue;
-  const [value, setValue] = useState<number>(get);
-
-  useEffect(() => {
-    const handler = () => setValue(get);
-    queries.forEach(q => matchMedia(q).addEventListener('change', handler));
-    return () => queries.forEach(q => matchMedia(q).removeEventListener('change', handler));
-  }, [queries]);
-
-  return value;
+// Hook for calculating columns based on container width
+const useContainerColumns = (containerWidth: number, minItemWidth: number = 250, maxColumns: number = 5): number => {
+  return useMemo(() => {
+    if (containerWidth === 0) return 1;
+    
+    // Calculate how many columns can fit based on minimum item width
+    const maxPossibleColumns = Math.floor(containerWidth / minItemWidth);
+    
+    // Clamp between 1 and maxColumns
+    return Math.max(1, Math.min(maxColumns, maxPossibleColumns));
+  }, [containerWidth, minItemWidth, maxColumns]);
 };
 
 // Hook for measuring container dimensions
@@ -61,15 +60,18 @@ const getImageDimensions = (src: string): Promise<{ width: number; height: numbe
   });
 };
 
+// Add aspect ratio to MasonryItem interface
 interface MasonryItem {
   id: string;
   src?: string;
-  img?: string;
+  img: string; // Made required to match ImageFile interface
   alt?: string;
-  name?: string;
-  url?: string;
+  name: string; // Made required to match ImageFile interface
+  url: string; // Made required to match ImageFile interface
   title?: string;
-  height?: number;
+  path: string; // Made required to match ImageFile interface
+  height: number; // Made required to match ImageFile interface
+  aspectRatio?: number; // width/height ratio
 }
 
 interface GridItem extends MasonryItem {
@@ -107,18 +109,16 @@ const Masonry: React.FC<MasonryProps> = ({
   className,
   onItemClick,
   scaleOnHover = true,
-  colorShiftOnHover = false
 }) => {
-  // Responsive columns based on screen size (1-5 columns)
-  const columns = useMedia(
-    ['(min-width: 1536px)', '(min-width: 1280px)', '(min-width: 1024px)', '(min-width: 768px)', '(min-width: 640px)'],
-    [5, 4, 3, 2, 2],
-    1
-  );
-
   const [containerRef, { width }] = useMeasure<HTMLDivElement>();
+  
+  // Calculate responsive columns based on container width instead of screen size
+  const columns = useContainerColumns(width, minItemWidth, 5);
+
+  console.log('Current columns:', columns, 'Container width:', width);
   const [imagesReady, setImagesReady] = useState(false);
   const [imageDimensions, setImageDimensions] = useState<Map<string, { width: number; height: number }>>(new Map());
+  const [hoveredImageId, setHoveredImageId] = useState<string | null>(null);
   const hasMounted = useRef(false);
 
   // Load image dimensions
@@ -142,7 +142,7 @@ const Masonry: React.FC<MasonryProps> = ({
     loadDimensions();
   }, [items]);
 
-  // Calculate grid layout
+  // Calculate masonry layout with dynamic heights and proper centering
   const grid = useMemo<GridItem[]>(() => {
     if (!width || !imagesReady || imageDimensions.size === 0) return [];
 
@@ -150,15 +150,11 @@ const Masonry: React.FC<MasonryProps> = ({
     const availableWidth = width - totalGaps;
     const columnWidth = Math.min(maxItemWidth, Math.max(minItemWidth, availableWidth / columns));
     
-    // Calculate total grid width for centering
-    const totalGridWidth = columns * columnWidth + totalGaps;
+    // Calculate total grid width and centering offset
+    const totalGridWidth = columns * columnWidth + (columns - 1) * gap;
     const offsetX = Math.max(0, (width - totalGridWidth) / 2);
     
-    // Ensure grid doesn't exceed container bounds
-    const maxX = width - columnWidth;
-    const safeOffsetX = Math.min(offsetX, maxX - (columns - 1) * (columnWidth + gap));
-    
-    // Initialize column heights
+    // Initialize column heights array
     const columnHeights = new Array(columns).fill(0);
     
     return items.map((item) => {
@@ -172,8 +168,8 @@ const Masonry: React.FC<MasonryProps> = ({
       // Find the shortest column
       const shortestColumnIndex = columnHeights.indexOf(Math.min(...columnHeights));
       
-      // Calculate position with safe centering offset
-      const x = Math.max(0, Math.min(safeOffsetX + shortestColumnIndex * (columnWidth + gap), maxX));
+      // Position item in the shortest column with centering offset
+      const x = offsetX + shortestColumnIndex * (columnWidth + gap);
       const y = columnHeights[shortestColumnIndex];
       
       // Update column height
@@ -190,42 +186,49 @@ const Masonry: React.FC<MasonryProps> = ({
     });
   }, [columns, items, width, gap, minItemWidth, maxItemWidth, imagesReady, imageDimensions]);
 
+  // Calculate container height based on tallest column
+  const containerHeight = useMemo(() => {
+    if (grid.length === 0) return 0;
+    
+    const columnHeights = new Array(columns).fill(0);
+    grid.forEach(item => {
+      // Calculate which column this item is in based on its x position and offset
+      const gap = 16;
+      const containerWidth = containerRef.current?.offsetWidth || 0;
+      const columnWidth = (containerWidth - gap * (columns - 1)) / columns;
+      const totalGridWidth = columns * columnWidth + (columns - 1) * gap;
+      const offsetX = Math.max(0, (containerWidth - totalGridWidth) / 2);
+      
+      const col = Math.round((item.x - offsetX) / (columnWidth + gap));
+      if (col >= 0 && col < columns) {
+        columnHeights[col] = Math.max(columnHeights[col], (item.y || 0) + (item.height || 0));
+      }
+    });
+    
+    return Math.max(...columnHeights);
+  }, [grid, columns, containerRef]);
+
   // Animation effects
   useLayoutEffect(() => {
-    if (!imagesReady || grid.length === 0) return;
+    if (!imagesReady || items.length === 0) return;
 
-    grid.forEach((item, index) => {
+    items.forEach((item, index) => {
       const element = document.querySelector(`[data-masonry-id="${item.id}"]`) as HTMLElement;
       if (!element) return;
 
-      const animationProps = {
-        x: item.x,
-        y: item.y,
-        width: item.width,
-        height: item.height
-      };
-
       if (!hasMounted.current) {
-        // Set initial position immediately to prevent stacking
-        gsap.set(element, {
-          x: item.x,
-          y: item.y,
-          width: item.width,
-          height: item.height
-        });
-
-        // Initial animation from bottom
+        // Initial animation
         gsap.fromTo(
           element,
           {
             opacity: 0,
-            y: item.y + 100,
+            y: 50,
             scale: 0.8,
             filter: 'blur(10px)'
           },
           {
             opacity: 1,
-            y: item.y,
+            y: 0,
             scale: 1,
             filter: 'blur(0px)',
             duration: animationDuration,
@@ -234,18 +237,13 @@ const Masonry: React.FC<MasonryProps> = ({
           }
         );
       } else {
-        // Layout change animation
-        gsap.to(element, {
-          ...animationProps,
-          duration: animationDuration * 0.6,
-          ease: animationEase,
-          overwrite: 'auto'
-        });
+        // Layout change animation - not needed for CSS Grid
+        // Grid handles layout changes automatically
       }
     });
 
     hasMounted.current = true;
-  }, [grid, imagesReady, animationDuration, animationEase, staggerDelay]);
+  }, [items, imagesReady, animationDuration, animationEase, staggerDelay]);
 
   // Hover handlers
   const handleMouseEnter = useCallback((id: string) => {
@@ -273,7 +271,7 @@ const Masonry: React.FC<MasonryProps> = ({
   }, []);
 
   // Click handler
-  const handleClick = useCallback((item: GridItem) => {
+  const handleClick = useCallback((item: MasonryItem) => {
     if (onItemClick) {
       onItemClick(item);
     } else if (item.url) {
@@ -284,32 +282,47 @@ const Masonry: React.FC<MasonryProps> = ({
   return (
     <div 
       ref={containerRef} 
-      className={cn("relative w-full overflow-hidden", className)}
-      style={{ 
-        height: grid.length > 0 ? Math.max(...grid.map(item => item.y + item.height)) + gap : 'auto'
+      className={cn("w-full overflow-hidden", className)}
+      style={{
+        position: 'relative',
+        width: '100%',
+        height: `${containerHeight}px`,
+        overflow: 'hidden'
       }}
     >
-      {grid.map((item) => (
+      {grid.map((item, index) => (
         <div
-          key={item.id}
-          data-masonry-id={item.id}
+          key={item.id || index}
           className="absolute cursor-pointer overflow-hidden rounded-lg shadow-lg transition-shadow duration-300 hover:shadow-xl"
           style={{
-            width: item.width,
-            height: item.height,
+            left: `${item.x}px`,
+            top: `${item.y}px`,
+            width: `${item.width}px`,
+            height: `${item.height}px`,
             willChange: 'transform, opacity',
             transformOrigin: 'center center'
           }}
           onClick={() => handleClick(item)}
-          onMouseEnter={() => handleMouseEnter(item.id)}
-          onMouseLeave={() => handleMouseLeave(item.id)}
+          onMouseEnter={() => {
+            setHoveredImageId(item.id);
+            if (scaleOnHover) handleMouseEnter(item.id);
+          }}
+          onMouseLeave={() => {
+            setHoveredImageId(null);
+            if (scaleOnHover) handleMouseLeave(item.id);
+          }}
         >
           <div className="relative w-full h-full group">
             <Image
               src={item.src || item.img || item.url || ''}
               alt={item.alt || item.name || 'Gallery image'}
               fill
-              className="object-cover transition-transform duration-300 group-hover:scale-110"
+              className={cn(
+                "object-cover transition-all duration-300 group-hover:scale-110",
+                hoveredImageId && hoveredImageId !== item.id 
+                  ? "filter grayscale" 
+                  : "filter-none"
+              )}
               sizes={`(max-width: 640px) 100vw, (max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1400px) 25vw, 20vw`}
               priority={false}
             />

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { Search, Grid, List, FolderOpen, Image as ImageIcon, ArrowLeft } from 'lucide-react'
+import { Search, Grid, List, FolderOpen, ImageIcon, ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -10,6 +10,9 @@ import { Separator } from '@/components/ui/separator'
 import Masonry from '@/components/Masonry'
 import ImageCarousel from './gallery/ImageCarousel'
 import { cn } from '@/lib/utils'
+import { useOS } from '@/hooks/useOS'
+import { FileSystemUtils, OSFileSystemItem, OSFile, OSFolder } from '@/hooks/useOS'
+import Image from 'next/image'
 
 interface GalleryAppProps {
   windowId: string
@@ -21,7 +24,11 @@ interface ImageFile {
   path: string
   img: string
   url: string
+  src?: string // Added for MasonryItem compatibility
+  alt?: string // Added for MasonryItem compatibility
+  title?: string // Added for MasonryItem compatibility
   height: number
+  aspectRatio?: number // Added for MasonryItem compatibility
   size?: number
   type?: string
   lastModified?: Date
@@ -34,8 +41,9 @@ interface FolderStructure {
   type: 'folder' | 'file'
 }
 
-const GalleryApp: React.FC<GalleryAppProps> = ({ windowId }) => {
-  const [currentPath, setCurrentPath] = useState('/images')
+const GalleryApp: React.FC<GalleryAppProps> = () => {
+  const { state } = useOS()
+  const [currentPath, setCurrentPath] = useState('/Images/gallery')
   const [searchQuery, setSearchQuery] = useState('')
   const [viewMode, setViewMode] = useState<'masonry' | 'list'>('masonry')
   const [sortBy, setSortBy] = useState<'name' | 'date' | 'size'>('name')
@@ -45,120 +53,67 @@ const GalleryApp: React.FC<GalleryAppProps> = ({ windowId }) => {
   const [folders, setFolders] = useState<FolderStructure[]>([])
   const [loading, setLoading] = useState(true)
 
-  // Gallery file system data based on actual files in public/image_os/gallery/
-  const mockFileSystem: FolderStructure = {
-    name: 'images',
-    path: '/images',
-    type: 'folder',
-    children: [
-      {
-        name: 'europe',
-        path: '/images/europe',
-        type: 'folder',
-        children: [
-          { id: 'eu1', name: 'Albany - 2024 (11).webp', path: '/images/europe/Albany - 2024 (11).webp', img: '/image_os/gallery/europe/Albany - 2024 (11).webp', url: '/image_os/gallery/europe/Albany - 2024 (11).webp', height: 280, type: 'image/webp', size: 245760, lastModified: new Date('2024-01-15') },
-          { id: 'eu2', name: 'Albany - 2024 (110).webp', path: '/images/europe/Albany - 2024 (110).webp', img: '/image_os/gallery/europe/Albany - 2024 (110).webp', url: '/image_os/gallery/europe/Albany - 2024 (110).webp', height: 320, type: 'image/webp', size: 198432, lastModified: new Date('2024-01-16') },
-          { id: 'eu3', name: 'Dresde - 2023 (11).webp', path: '/images/europe/Dresde - 2023 (11).webp', img: '/image_os/gallery/europe/Dresde - 2023 (11).webp', url: '/image_os/gallery/europe/Dresde - 2023 (11).webp', height: 290, type: 'image/webp', size: 312576, lastModified: new Date('2023-08-11') },
-          { id: 'eu4', name: 'Dresde - 2023 (12).webp', path: '/images/europe/Dresde - 2023 (12).webp', img: '/image_os/gallery/europe/Dresde - 2023 (12).webp', url: '/image_os/gallery/europe/Dresde - 2023 (12).webp', height: 310, type: 'image/webp', size: 267890, lastModified: new Date('2023-08-12') },
-          { id: 'eu5', name: 'Dresde - 2023 (13).webp', path: '/images/europe/Dresde - 2023 (13).webp', img: '/image_os/gallery/europe/Dresde - 2023 (13).webp', url: '/image_os/gallery/europe/Dresde - 2023 (13).webp', height: 300, type: 'image/webp', size: 289123, lastModified: new Date('2023-08-13') },
-          { id: 'eu6', name: 'Grece - 2024 (22).webp', path: '/images/europe/Grece - 2024 (22).webp', img: '/image_os/gallery/europe/Grece - 2024 (22).webp', url: '/image_os/gallery/europe/Grece - 2024 (22).webp', height: 330, type: 'image/webp', size: 234567, lastModified: new Date('2024-06-22') },
-          { id: 'eu7', name: 'Grece - 2024 (78).webp', path: '/images/europe/Grece - 2024 (78).webp', img: '/image_os/gallery/europe/Grece - 2024 (78).webp', url: '/image_os/gallery/europe/Grece - 2024 (78).webp', height: 270, type: 'image/webp', size: 345678, lastModified: new Date('2024-06-25') },
-          { id: 'eu8', name: 'Grece - 2024 - nb (13).webp', path: '/images/europe/Grece - 2024 - nb (13).webp', img: '/image_os/gallery/europe/Grece - 2024 - nb (13).webp', url: '/image_os/gallery/europe/Grece - 2024 - nb (13).webp', height: 295, type: 'image/webp', size: 198765, lastModified: new Date('2024-06-20') },
-          { id: 'eu9', name: 'Sicile - 2023 (1).webp', path: '/images/europe/Sicile - 2023 (1).webp', img: '/image_os/gallery/europe/Sicile - 2023 (1).webp', url: '/image_os/gallery/europe/Sicile - 2023 (1).webp', height: 285, type: 'image/webp', size: 276543, lastModified: new Date('2023-09-01') },
-          { id: 'eu10', name: 'Sicile - 2023 (15).webp', path: '/images/europe/Sicile - 2023 (15).webp', img: '/image_os/gallery/europe/Sicile - 2023 (15).webp', url: '/image_os/gallery/europe/Sicile - 2023 (15).webp', height: 305, type: 'image/webp', size: 321098, lastModified: new Date('2023-09-15') }
-        ]
-      },
-      {
-        name: 'france',
-        path: '/images/france',
-        type: 'folder',
-        children: [
-          { id: 'fr1', name: 'Avignon - 2024 (10).webp', path: '/images/france/Avignon - 2024 (10).webp', img: '/image_os/gallery/france/Avignon - 2024 (10).webp', url: '/image_os/gallery/france/Avignon - 2024 (10).webp', height: 290, type: 'image/webp', size: 245760, lastModified: new Date('2024-07-10') },
-          { id: 'fr2', name: 'Baden - 2023 (11).webp', path: '/images/france/Baden - 2023 (11).webp', img: '/image_os/gallery/france/Baden - 2023 (11).webp', url: '/image_os/gallery/france/Baden - 2023 (11).webp', height: 310, type: 'image/webp', size: 198432, lastModified: new Date('2023-08-11') },
-          { id: 'fr3', name: 'GP Mathilde - 2024 (17).webp', path: '/images/france/GP Mathilde - 2024 (17).webp', img: '/image_os/gallery/france/GP Mathilde - 2024 (17).webp', url: '/image_os/gallery/france/GP Mathilde - 2024 (17).webp', height: 280, type: 'image/webp', size: 312576, lastModified: new Date('2024-05-17') },
-          { id: 'fr4', name: 'Paris - 2024 (204).webp', path: '/images/france/Paris - 2024 (204).webp', img: '/image_os/gallery/france/Paris - 2024 (204).webp', url: '/image_os/gallery/france/Paris - 2024 (204).webp', height: 320, type: 'image/webp', size: 267890, lastModified: new Date('2024-03-15') },
-          { id: 'fr5', name: 'Ski courchevel - 2024 (27).webp', path: '/images/france/Ski courchevel - 2024 (27).webp', img: '/image_os/gallery/france/Ski courchevel - 2024 (27).webp', url: '/image_os/gallery/france/Ski courchevel - 2024 (27).webp', height: 300, type: 'image/webp', size: 289123, lastModified: new Date('2024-02-27') },
-          { id: 'fr6', name: 'Toulon - 2023 (15).webp', path: '/images/france/Toulon - 2023 (15).webp', img: '/image_os/gallery/france/Toulon - 2023 (15).webp', url: '/image_os/gallery/france/Toulon - 2023 (15).webp', height: 295, type: 'image/webp', size: 234567, lastModified: new Date('2023-07-15') },
-          { id: 'fr7', name: 'Trek - 2024  (10).webp', path: '/images/france/Trek - 2024  (10).webp', img: '/image_os/gallery/france/Trek - 2024  (10).webp', url: '/image_os/gallery/france/Trek - 2024  (10).webp', height: 285, type: 'image/webp', size: 345678, lastModified: new Date('2024-08-10') }
-        ]
-      },
-      {
-        name: 'inde',
-        path: '/images/inde',
-        type: 'folder',
-        children: [
-          { id: 'in1', name: '000001680037.webp', path: '/images/inde/000001680037.webp', img: '/image_os/gallery/inde/000001680037.webp', url: '/image_os/gallery/inde/000001680037.webp', height: 300, type: 'image/webp', size: 245760, lastModified: new Date('2025-02-09') },
-          { id: 'in2', name: '20250209 - Bangalore [081].webp', path: '/images/inde/20250209 - Bangalore [081].webp', img: '/image_os/gallery/inde/20250209 - Bangalore [081].webp', url: '/image_os/gallery/inde/20250209 - Bangalore [081].webp', height: 280, type: 'image/webp', size: 198432, lastModified: new Date('2025-02-09') },
-          { id: 'in3', name: '20250221 - Andaman [46].webp', path: '/images/inde/20250221 - Andaman [46].webp', img: '/image_os/gallery/inde/20250221 - Andaman [46].webp', url: '/image_os/gallery/inde/20250221 - Andaman [46].webp', height: 320, type: 'image/webp', size: 312576, lastModified: new Date('2025-02-21') },
-          { id: 'in4', name: '20250321 - Meghalaya [52].webp', path: '/images/inde/20250321 - Meghalaya [52].webp', img: '/image_os/gallery/inde/20250321 - Meghalaya [52].webp', url: '/image_os/gallery/inde/20250321 - Meghalaya [52].webp', height: 290, type: 'image/webp', size: 267890, lastModified: new Date('2025-03-21') },
-          { id: 'in5', name: '20250412 - Jaipur [28].webp', path: '/images/inde/20250412 - Jaipur [28].webp', img: '/image_os/gallery/inde/20250412 - Jaipur [28].webp', url: '/image_os/gallery/inde/20250412 - Jaipur [28].webp', height: 310, type: 'image/webp', size: 289123, lastModified: new Date('2025-04-12') },
-          { id: 'in6', name: '20250419 - Udaipur [01].webp', path: '/images/inde/20250419 - Udaipur [01].webp', img: '/image_os/gallery/inde/20250419 - Udaipur [01].webp', url: '/image_os/gallery/inde/20250419 - Udaipur [01].webp', height: 295, type: 'image/webp', size: 234567, lastModified: new Date('2025-04-19') },
-          { id: 'in7', name: '20250420 - Jodhpur [29].webp', path: '/images/inde/20250420 - Jodhpur [29].webp', img: '/image_os/gallery/inde/20250420 - Jodhpur [29].webp', url: '/image_os/gallery/inde/20250420 - Jodhpur [29].webp', height: 285, type: 'image/webp', size: 345678, lastModified: new Date('2025-04-20') },
-          { id: 'in8', name: '20250428 - Goa [01].webp', path: '/images/inde/20250428 - Goa [01].webp', img: '/image_os/gallery/inde/20250428 - Goa [01].webp', url: '/image_os/gallery/inde/20250428 - Goa [01].webp', height: 305, type: 'image/webp', size: 198765, lastModified: new Date('2025-04-28') }
-        ]
-      },
-      {
-        name: 'maroc',
-        path: '/images/maroc',
-        type: 'folder',
-        children: [
-          { id: 'ma1', name: 'Maroc - 2024 (129).webp', path: '/images/maroc/Maroc - 2024 (129).webp', img: '/image_os/gallery/maroc/Maroc - 2024 (129).webp', url: '/image_os/gallery/maroc/Maroc - 2024 (129).webp', height: 290, type: 'image/webp', size: 245760, lastModified: new Date('2024-10-15') },
-          { id: 'ma2', name: 'Maroc - 2024 (130).webp', path: '/images/maroc/Maroc - 2024 (130).webp', img: '/image_os/gallery/maroc/Maroc - 2024 (130).webp', url: '/image_os/gallery/maroc/Maroc - 2024 (130).webp', height: 310, type: 'image/webp', size: 198432, lastModified: new Date('2024-10-16') },
-          { id: 'ma3', name: 'Maroc - 2024 (58).webp', path: '/images/maroc/Maroc - 2024 (58).webp', img: '/image_os/gallery/maroc/Maroc - 2024 (58).webp', url: '/image_os/gallery/maroc/Maroc - 2024 (58).webp', height: 280, type: 'image/webp', size: 312576, lastModified: new Date('2024-10-10') },
-          { id: 'ma4', name: 'Maroc - 2024 (84).webp', path: '/images/maroc/Maroc - 2024 (84).webp', img: '/image_os/gallery/maroc/Maroc - 2024 (84).webp', url: '/image_os/gallery/maroc/Maroc - 2024 (84).webp', height: 320, type: 'image/webp', size: 267890, lastModified: new Date('2024-10-12') }
-        ]
-      },
-      {
-        name: 'new york',
-        path: '/images/new york',
-        type: 'folder',
-        children: [
-          { id: 'ny1', name: 'NYC - 2024 (149).webp', path: '/images/new york/NYC - 2024 (149).webp', img: '/image_os/gallery/new york/NYC - 2024 (149).webp', url: '/image_os/gallery/new york/NYC - 2024 (149).webp', height: 300, type: 'image/webp', size: 245760, lastModified: new Date('2024-09-15') },
-          { id: 'ny2', name: 'NYC - 2024 (154).webp', path: '/images/new york/NYC - 2024 (154).webp', img: '/image_os/gallery/new york/NYC - 2024 (154).webp', url: '/image_os/gallery/new york/NYC - 2024 (154).webp', height: 285, type: 'image/webp', size: 198432, lastModified: new Date('2024-09-16') },
-          { id: 'ny3', name: 'NYC - 2024 (77).webp', path: '/images/new york/NYC - 2024 (77).webp', img: '/image_os/gallery/new york/NYC - 2024 (77).webp', url: '/image_os/gallery/new york/NYC - 2024 (77).webp', height: 310, type: 'image/webp', size: 312576, lastModified: new Date('2024-09-10') },
-          { id: 'ny4', name: 'NYC - 2024 (87).webp', path: '/images/new york/NYC - 2024 (87).webp', img: '/image_os/gallery/new york/NYC - 2024 (87).webp', url: '/image_os/gallery/new york/NYC - 2024 (87).webp', height: 295, type: 'image/webp', size: 267890, lastModified: new Date('2024-09-12') }
-        ]
-      },
-      {
-        name: 'thailande',
-        path: '/images/thailande',
-        type: 'folder',
-        children: [
-          { id: 'th1', name: '20250302 - Thailande [134].webp', path: '/images/thailande/20250302 - Thailande [134].webp', img: '/image_os/gallery/thailande/20250302 - Thailande [134].webp', url: '/image_os/gallery/thailande/20250302 - Thailande [134].webp', height: 290, type: 'image/webp', size: 245760, lastModified: new Date('2025-03-02') },
-          { id: 'th2', name: '20250302 - Thailande [138].webp', path: '/images/thailande/20250302 - Thailande [138].webp', img: '/image_os/gallery/thailande/20250302 - Thailande [138].webp', url: '/image_os/gallery/thailande/20250302 - Thailande [138].webp', height: 305, type: 'image/webp', size: 198432, lastModified: new Date('2025-03-02') },
-          { id: 'th3', name: '20250303 - Thailande [125].webp', path: '/images/thailande/20250303 - Thailande [125].webp', img: '/image_os/gallery/thailande/20250303 - Thailande [125].webp', url: '/image_os/gallery/thailande/20250303 - Thailande [125].webp', height: 280, type: 'image/webp', size: 312576, lastModified: new Date('2025-03-03') },
-          { id: 'th4', name: '20250312 - Thailande [061].webp', path: '/images/thailande/20250312 - Thailande [061].webp', img: '/image_os/gallery/thailande/20250312 - Thailande [061].webp', url: '/image_os/gallery/thailande/20250312 - Thailande [061].webp', height: 315, type: 'image/webp', size: 267890, lastModified: new Date('2025-03-12') }
-        ]
-      }
-    ]
+  // Helper function to convert OSFileSystemItem to ImageFile (compatible with MasonryItem)
+  const convertToImageFile = (item: OSFileSystemItem): ImageFile => {
+    const file = item as OSFile
+    // Get image URL from content (where it's stored) or fallback to metadata
+    const imageUrl = file.content as string || 
+                     file.metadata?.url || 
+                     file.metadata?.img || 
+                     ''
+    return {
+      id: file.id,
+      name: file.name,
+      path: file.path,
+      img: imageUrl,
+      url: imageUrl,
+      src: imageUrl, // Added for MasonryItem compatibility
+      alt: file.name, // Added for MasonryItem compatibility
+      title: file.name, // Added for MasonryItem compatibility
+      height: file.metadata?.height || 300,
+      aspectRatio: file.metadata?.aspectRatio || 1, // Added for MasonryItem compatibility
+      size: file.size,
+      type: file.extension,
+      lastModified: new Date(file.modifiedAt)
+    }
   }
 
-  // Load files and folders for current path
+  // Helper function to convert OSFileSystemItem to FolderStructure
+  const convertToFolderStructure = (item: OSFileSystemItem): FolderStructure => {
+    const folder = item as OSFolder
+    return {
+      name: folder.name,
+      path: folder.path,
+      type: folder.type as 'folder' | 'file',
+      children: Array.from(folder.children.values()).map(child => 
+        'children' in child
+          ? convertToFolderStructure(child)
+          : convertToImageFile(child)
+      )
+    }
+  }
+
+  // Load files and folders from OS file system
   useEffect(() => {
     setLoading(true)
     
     const loadPath = (path: string) => {
-      const pathParts = path.split('/').filter(Boolean)
-      let currentNode = mockFileSystem
-      
-      // Navigate to the current path
-      for (const part of pathParts.slice(1)) { // Skip 'images' as it's the root
-        const found = currentNode.children.find(
-          child => child.name === part && child.type === 'folder'
-        ) as FolderStructure
-        if (found) {
-          currentNode = found
-        }
-      }
-      
+      // Use the same pattern as FileExplorerApp
+      const items = FileSystemUtils.getItemsByPath(state.fileSystem.root, path)
       const currentImages: ImageFile[] = []
       const currentFolders: FolderStructure[] = []
       
-      currentNode.children.forEach(child => {
-        if (child.type === 'folder') {
-          currentFolders.push(child as FolderStructure)
+      items.forEach(item => {
+        if ('children' in item) {
+          // It's a folder
+          currentFolders.push(convertToFolderStructure(item))
         } else {
-          currentImages.push(child as ImageFile)
+          // It's a file - check if it's an image
+          const file = item as OSFile
+          if (file.content && typeof file.content === 'string' && (file.content.includes('.jpg') || file.content.includes('.png') || file.content.includes('.jpeg') || file.content.includes('.gif') || file.content.includes('.webp'))) {
+            // It's an image file
+            currentImages.push(convertToImageFile(item))
+          }
         }
       })
       
@@ -168,7 +123,8 @@ const GalleryApp: React.FC<GalleryAppProps> = ({ windowId }) => {
     
     loadPath(currentPath)
     setLoading(false)
-  }, [currentPath])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPath, state.fileSystem])
 
   // Filter and sort images
   const filteredAndSortedImages = useMemo(() => {
@@ -372,7 +328,9 @@ const GalleryApp: React.FC<GalleryAppProps> = ({ windowId }) => {
                       onClick={() => handleImageClick(image)}
                       className="flex items-center gap-4 p-3 rounded-lg hover:bg-muted transition-colors w-full text-left"
                     >
-                      <img
+                      <Image
+                        width={128}
+                        height={128}
                         src={image.img}
                         alt={image.name}
                         className="w-12 h-12 object-cover rounded"

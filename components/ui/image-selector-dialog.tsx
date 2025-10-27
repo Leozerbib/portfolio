@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
 import { AspectRatio } from "@/components/ui/aspect-ratio"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -114,7 +113,7 @@ export function ImageSelectorDialog({
             <h3 className="text-sm font-medium">Available Images</h3>
             <ScrollArea className="h-full">
               <div className="grid grid-cols-1 gap-3 p-4">
-                {BACKGROUND_IMAGES.map((image, index) => (
+                {BACKGROUND_IMAGES.map((image) => (
                   <div
                     key={image.url}
                     className={cn(
