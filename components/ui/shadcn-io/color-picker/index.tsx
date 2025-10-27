@@ -96,15 +96,19 @@ export const ColorPicker = ({
     }
   }, [value]);
 
-  // Notify parent of changes
+  // Use useRef to store the latest onChange callback
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+
+  // Notify parent of changes without including onChange in dependencies
   useEffect(() => {
-    if (onChange) {
+    if (onChangeRef.current) {
       const color = Color.hsl(hue, saturation, lightness).alpha(alpha / 100);
       const rgba = color.rgb().array();
 
-      onChange([rgba[0], rgba[1], rgba[2], alpha / 100]);
+      onChangeRef.current([rgba[0], rgba[1], rgba[2], alpha / 100]);
     }
-  }, [hue, saturation, lightness, alpha, onChange]); // Removed onChange from dependency array
+  }, [hue, saturation, lightness, alpha]);
 
   return (
     <ColorPickerContext.Provider
