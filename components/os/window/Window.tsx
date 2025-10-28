@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { WindowContent } from './WindowContent'
 import { animate, createDraggable } from 'animejs'
 import { cn } from '@/lib/utils'
-import GradualBlur from '@/components/GradualBlur'
 
 interface WindowProps {
   baba_window: OSWindow
@@ -443,16 +442,6 @@ export function Window({ baba_window }: WindowProps) {
         baba_window.isMaximized ? "rounded-none" : "rounded-lg",
       )}>
         <WindowContent window={baba_window} />
-        <GradualBlur
-        target="parent"
-        position="bottom"
-        height="2rem"
-        strength={1}
-        divCount={3}
-        curve="bezier"
-        exponential={false}
-        opacity={0.9}
-      />
       </CardContent>
         
 

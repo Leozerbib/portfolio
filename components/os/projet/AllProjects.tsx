@@ -9,14 +9,13 @@ import { Separator } from '@/components/ui/separator'
 import { 
   Search, 
   Globe, 
-  ExternalLink, 
   Calendar, 
   Code, 
   Star,
-  Filter,
   Grid3X3,
   List,
-  ArrowUpRight
+  ArrowUpRight,
+  Monitor
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +47,10 @@ interface AllProjectsProps {
   onProjectSelect?: (project: Project) => void
   /** View mode for the project list */
   viewMode?: 'grid' | 'list'
+  /** Callback to open project in browser */
+  onOpenInBrowser?: (projectId: string) => void
+  /** Optional projects array to display instead of mock data */
+  projects?: Project[]
 }
 
 /**
@@ -57,7 +60,9 @@ interface AllProjectsProps {
 export default function AllProjects({ 
   className, 
   onProjectSelect,
-  viewMode: initialViewMode = 'grid'
+  viewMode: initialViewMode = 'grid',
+  onOpenInBrowser,
+  projects: externalProjects
 }: AllProjectsProps) {
   const [projects, setProjects] = useState<Project[]>([])
   const [filteredProjects, setFilteredProjects] = useState<Project[]>([])
@@ -67,100 +72,101 @@ export default function AllProjects({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(initialViewMode)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Mock project data - in a real app, this would come from an API or file system
+  // Project data with all created components - integrated with BrowserApp
   const mockProjects: Project[] = [
     {
       id: 'enchere',
-      name: 'enchere.html',
+      name: 'Système d\'Enchères',
       title: 'Système d\'Enchères',
-      description: 'A comprehensive online auction system with real-time bidding, user authentication, and payment processing.',
-      technologies: ['React', 'Node.js', 'WebSocket', 'PostgreSQL'],
+      description: 'A comprehensive online auction system with real-time bidding, user authentication, payment processing, and advanced security features.',
+      technologies: ['React', 'Node.js', 'WebSocket', 'PostgreSQL', 'Stripe', 'Redis'],
       category: 'web',
       status: 'completed',
       lastUpdated: '2024-01-15',
-      size: 1024,
-      path: '/Projects/enchere.html',
+      size: 2048,
+      path: '/Projects/enchere.tsx',
       icon: '🏆',
       featured: true
     },
     {
       id: 'gile',
-      name: 'gile.html',
+      name: 'Gile - File Manager',
       title: 'Gile - File Manager',
-      description: 'Modern file management system with cloud integration, advanced search, and collaborative features.',
-      technologies: ['TypeScript', 'Electron', 'AWS S3', 'Redis'],
+      description: 'Modern file management system with cloud integration, advanced search, collaborative features, and cross-platform support.',
+      technologies: ['TypeScript', 'Electron', 'AWS S3', 'Redis', 'SQLite', 'React'],
       category: 'desktop',
       status: 'active',
       lastUpdated: '2024-01-20',
-      size: 1200,
-      path: '/Projects/gile.html',
-      icon: '📁'
+      size: 1856,
+      path: '/Projects/gile.tsx',
+      icon: '📁',
+      featured: true
     },
     {
       id: 'helixir',
-      name: 'helixir.html',
+      name: 'Helixir - Code Editor',
       title: 'Helixir - Code Editor',
-      description: 'Next-generation code editor with AI assistance, collaborative editing, and advanced debugging tools.',
-      technologies: ['Monaco Editor', 'WebAssembly', 'AI/ML', 'Docker'],
+      description: 'Next-generation code editor with AI assistance, collaborative editing, advanced debugging tools, and modern interface.',
+      technologies: ['Monaco Editor', 'WebAssembly', 'AI/ML', 'Docker', 'TypeScript', 'Rust'],
       category: 'tools',
       status: 'in-progress',
       lastUpdated: '2024-01-18',
-      size: 1400,
-      path: '/Projects/helixir.html',
+      size: 2304,
+      path: '/Projects/helixir.tsx',
       icon: '⚡',
       featured: true
     },
     {
       id: 'lab',
-      name: 'lab.html',
+      name: 'Lab - Experimental Platform',
       title: 'Lab - Experimental Platform',
-      description: 'Research and development platform for testing new technologies and innovative web solutions.',
-      technologies: ['WebGL', 'Three.js', 'WebRTC', 'GraphQL'],
+      description: 'Research and development platform for testing new technologies, innovative web solutions, and cutting-edge experiments.',
+      technologies: ['WebGL', 'Three.js', 'WebRTC', 'GraphQL', 'WebAssembly', 'WebXR'],
       category: 'web',
       status: 'active',
       lastUpdated: '2024-01-22',
-      size: 1600,
-      path: '/Projects/lab.html',
+      size: 1920,
+      path: '/Projects/lab.tsx',
       icon: '🧪'
     },
     {
       id: 'optimisationPostgres',
-      name: 'optimisationPostgres.html',
+      name: 'PostgreSQL Optimization',
       title: 'PostgreSQL Optimization',
-      description: 'Advanced database optimization toolkit with performance monitoring and query analysis.',
-      technologies: ['PostgreSQL', 'Python', 'Analytics', 'Monitoring'],
+      description: 'Advanced database optimization toolkit with performance monitoring, query analysis, and real-time metrics dashboard.',
+      technologies: ['PostgreSQL', 'Python', 'Go', 'Grafana', 'Prometheus', 'Docker'],
       category: 'database',
       status: 'completed',
       lastUpdated: '2024-01-10',
-      size: 1300,
-      path: '/Projects/optimisationPostgres.html',
+      size: 1792,
+      path: '/Projects/optimisationPostgres.tsx',
       icon: '🐘'
     },
     {
       id: 'satviewer',
-      name: 'satviewer.html',
+      name: 'SatViewer - Satellite Tracking',
       title: 'SatViewer - Satellite Tracking',
-      description: 'Real-time satellite tracking application with 3D visualization and orbital predictions.',
-      technologies: ['Three.js', 'WebGL', 'APIs', 'Real-time'],
+      description: 'Real-time satellite tracking application with 3D visualization, orbital predictions, and comprehensive space data.',
+      technologies: ['React', 'Three.js', 'WebGL', 'Node.js', 'Socket.io', 'PostgreSQL'],
       category: 'web',
       status: 'completed',
       lastUpdated: '2024-01-12',
-      size: 1800,
-      path: '/Projects/satviewer.html',
+      size: 2176,
+      path: '/Projects/satviewer.tsx',
       icon: '🛰️',
       featured: true
     },
     {
       id: 'spotmap',
-      name: 'spotmap.html',
+      name: 'SpotMap - Location Discovery',
       title: 'SpotMap - Location Discovery',
-      description: 'Interactive mapping application for discovering and sharing interesting locations and hidden gems.',
-      technologies: ['Mapbox', 'Geolocation', 'PWA', 'Mobile'],
+      description: 'Interactive mapping application for discovering and sharing interesting locations, hidden gems, and community-driven content.',
+      technologies: ['React Native', 'Mapbox', 'Node.js', 'MongoDB', 'Socket.io', 'AWS S3'],
       category: 'mobile',
       status: 'active',
       lastUpdated: '2024-01-25',
-      size: 1500,
-      path: '/Projects/spotmap.html',
+      size: 1984,
+      path: '/Projects/spotmap.tsx',
       icon: '📍'
     }
   ]
@@ -168,13 +174,19 @@ export default function AllProjects({
   // Initialize projects
   useEffect(() => {
     setIsLoading(true)
+    
+    // Use external projects if provided, otherwise use mock data
+    const projectsToUse = externalProjects && externalProjects.length > 0 ? externalProjects : mockProjects
+    console.log('🎯 AllProjects - Using projects:', projectsToUse.length, 'external:', !!externalProjects)
+    
     // Simulate API call delay
     setTimeout(() => {
-      setProjects(mockProjects)
-      setFilteredProjects(mockProjects)
+      setProjects(projectsToUse)
+      setFilteredProjects(projectsToUse)
       setIsLoading(false)
     }, 500)
-  }, [])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [externalProjects])
 
   // Filter projects based on search query, category, and status
   useEffect(() => {
@@ -205,8 +217,16 @@ export default function AllProjects({
   }, [projects, searchQuery, selectedCategory, selectedStatus])
 
   const handleProjectClick = (project: Project) => {
-    if (onProjectSelect) {
+    console.log('🎯 AllProjects - Project clicked:', project.id)
+    
+    if (onOpenInBrowser) {
+      console.log('🎯 AllProjects - Calling onOpenInBrowser with:', project.id)
+      onOpenInBrowser(project.id)
+    } else if (onProjectSelect) {
+      console.log('🎯 AllProjects - Calling onProjectSelect with:', project)
       onProjectSelect(project)
+    } else {
+      console.log('🎯 AllProjects - No callback available')
     }
   }
 
@@ -372,10 +392,30 @@ export default function AllProjects({
                         <span className="text-sm text-muted-foreground capitalize">
                           {project.category}
                         </span>
+                        <span className="text-xs text-muted-foreground">•</span>
+                        <span className="text-xs text-muted-foreground">
+                          {(project.size / 1024).toFixed(1)}MB
+                        </span>
                       </div>
                     </div>
                   </div>
-                  <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  <div className="flex items-center gap-1">
+                    {onOpenInBrowser && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          onOpenInBrowser(project.id)
+                        }}
+                        title="Open in Browser"
+                      >
+                        <Monitor className="h-4 w-4" />
+                      </Button>
+                    )}
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
+                  </div>
                 </div>
               </CardHeader>
 

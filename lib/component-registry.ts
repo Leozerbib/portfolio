@@ -8,7 +8,12 @@ import Lab from '@/components/os/projet/lab'
 import OptimisationPostgres from '@/components/os/projet/optimisationPostgres'
 import Satviewer from '@/components/os/projet/satviewer'
 import Spotmap from '@/components/os/projet/spotmap'
-import AllProjects from '@/components/os/projet/all-projects'
+import AllProjects from '@/components/os/projet/AllProjects'
+
+// Import browser page components
+import HomePage from '@/components/os/app/browser/HomePage'
+import ProjectPage from '@/components/os/app/browser/ProjectPage'
+import ErrorPage from '@/components/os/app/browser/ErrorPage'
 
 // Component registry interface
 export interface ComponentInfo {
@@ -102,6 +107,36 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     description: 'Comprehensive portfolio overview showcasing all projects with detailed information and statistics.',
     technologies: ['React', 'TypeScript', 'Tailwind CSS', 'shadcn/ui'],
     category: 'Portfolio',
+    status: 'active'
+  },
+  'browser-home': {
+    id: 'browser-home',
+    name: 'browser-home',
+    component: HomePage,
+    title: 'Browser Home Page',
+    description: 'Modern browser home page with quick links and navigation.',
+    technologies: ['React', 'TypeScript', 'Tailwind CSS', 'shadcn/ui'],
+    category: 'Browser',
+    status: 'active'
+  },
+  'browser-project': {
+    id: 'browser-project',
+    name: 'browser-project',
+    component: ProjectPage,
+    title: 'Browser Project Page',
+    description: 'Project detail page for browser display with rich content and navigation.',
+    technologies: ['React', 'TypeScript', 'Tailwind CSS', 'shadcn/ui'],
+    category: 'Browser',
+    status: 'active'
+  },
+  'browser-error': {
+    id: 'browser-error',
+    name: 'browser-error',
+    component: ErrorPage,
+    title: 'Browser Error Page',
+    description: 'Error page for browser with customizable error types and recovery options.',
+    technologies: ['React', 'TypeScript', 'Tailwind CSS', 'shadcn/ui'],
+    category: 'Browser',
     status: 'active'
   }
 }

@@ -33,6 +33,7 @@ export interface OSWindow {
   isAlwaysOnTop: boolean
   lastPosition?: { x: number; y: number }
   lastSize?: { width: number; height: number }
+  initialUrl?: string // For browser windows
 }
 
 export interface OSMonitor {
@@ -1257,14 +1258,13 @@ Enjoy exploring!`,
         componentId: 'all-projects',
         type: 'component',
         size: 2500,
-        path: '/Projects/all-projects.tsx',
+        path: '/Projects/AllProjects.tsx',
         mimeType: 'application/tsx'
       }
     ]
 
     // Add project files to Projects folder
     projectFiles.forEach(fileData => {
-      console.log('useOS - Creating file for:', fileData)
       
       const file = FileSystemUtils.createFile(
         fileData.id,
@@ -1272,19 +1272,18 @@ Enjoy exploring!`,
         fileData.path,
         'tsx', // extension
         fileData.size,
-        fileData.content || '', // content
+        '', // content - empty for component files
         Globe // icon
       )
       
-      // Set additional properties for component files
+      // Set additional properties for component files using metadata
       if (fileData.componentId) {
-        file.componentId = fileData.componentId
+        file.metadata.componentId = fileData.componentId
       }
       if (fileData.type) {
-        file.type = fileData.type
+        file.metadata.componentType = fileData.type
       }
       
-      console.log('useOS - Created file:', file)
       FileSystemUtils.addToFolder(projects, file)
     })
     

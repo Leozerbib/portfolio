@@ -1,6 +1,6 @@
 'use client'
 
-import { OSWindow, useOS } from '@/hooks/useOS'
+import { OSWindow, useOS, osActions } from '@/hooks/useOS'
 import { Card, CardContent } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -12,13 +12,14 @@ import GalleryApp from '../app/GalleryApp'
 import { MarkdownApp } from '../app/MarkdownApp'
 import { cn } from '@/lib/utils'
 import { BrowserApp } from '../app/BrowserApp'
+import { componentRegistry } from '@/lib/component-registry'
 
 interface WindowContentProps {
   window: OSWindow
 }
 
 export function WindowContent({ window }: WindowContentProps) {
-  const { state } = useOS()
+  const { state, dispatch } = useOS()
   
   // Guard against uninitialized file system
   if (!state.fileSystem || !state.fileSystem.root || !state.fileSystem.root.children) {
@@ -32,39 +33,63 @@ export function WindowContent({ window }: WindowContentProps) {
       </div>
     )
   }
+
+  // Create projects array from component registry for BrowserApp compatibility
+  const projects = Object.values(componentRegistry)
+    .map(comp => ({
+      id: comp.id,
+      name: comp.name,
+      description: comp.description,
+      path: `/components/os/projet/${comp.name}.tsx`,
+      componentId: comp.id, // Use the component ID for rendering
+      type: 'component' as const, // All registry components are TSX components
+      htmlContent: undefined // Components don't have HTML content
+    }))
   
-  // Debug the entire file system structure
-  console.log('WindowContent - Full fileSystem:', state.fileSystem)
-  console.log('WindowContent - Root:', state.fileSystem.root)
-  console.log('WindowContent - Root children:', state.fileSystem.root.children)
-  console.log('WindowContent - Available folders:', Array.from(state.fileSystem.root.children.keys()))
-  
-  // Extract project files from the file system
-  const projectsFolder = state.fileSystem.root.children.get('projects')
-  console.log('WindowContent - Projects folder:', projectsFolder)
-  
-  if (projectsFolder && 'children' in projectsFolder) {
-    console.log('WindowContent - Projects folder children:', Array.from(projectsFolder.children.values()))
+  // Handler for opening projects in browser
+  const handleOpenInBrowser = (projectId: string) => {
+    console.log('🌐 WindowContent - Opening project in browser:', projectId)
+    
+    const browserApp = state.apps.find(app => app.component === 'Browser')
+    if (!browserApp) {
+      console.error('Browser app not found')
+      return
+    }
+
+    // Create or focus browser window
+    const existingBrowserWindow = state.windows.find(
+      window => window.component === 'Browser'
+    )
+
+    if (existingBrowserWindow) {
+      // Focus existing browser window and navigate to project
+      dispatch(osActions.focusWindow(existingBrowserWindow.id))
+      
+      // Navigate to the project URL
+      const projectUrl = `project:${projectId}`
+      console.log('🌐 WindowContent - Navigating to:', projectUrl)
+      
+      // The browser will handle the navigation internally
+    } else {
+      // Create new browser window with project URL
+      const projectUrl = `project:${projectId}`
+      console.log('🌐 WindowContent - Creating new browser window with URL:', projectUrl)
+      
+      const browserWindowWithProject = {
+        ...browserApp,
+        initialUrl: projectUrl
+      }
+      dispatch(osActions.openWindow(browserWindowWithProject))
+    }
   }
-  
-  const projects = projectsFolder && 'children' in projectsFolder 
-    ? Array.from(projectsFolder.children.values()).map(file => ({
-        id: file.id,
-        name: file.name,
-        description: file.name.replace('.tsx', '').replace('.html', ''),
-        path: file.path,
-        componentId: (file as any).componentId,
-        type: (file as any).type === 'component' ? 'component' as const : 'html' as const,
-        htmlContent: (file as any).content
-      })) 
-    : []
-  
-  console.log('WindowContent - Mapped projects:', projects)
 
   const renderContent = () => {
     switch (window.component) {
       case 'Browser':
-        return <BrowserApp projects={projects} />
+        return <BrowserApp 
+          projects={projects} 
+          initialUrl={window.initialUrl}
+        />
       case 'Terminal':
         return <TerminalApp />
       case 'Email':
@@ -78,6 +103,17 @@ export function WindowContent({ window }: WindowContentProps) {
       case 'MarkdownApp':
         return <MarkdownApp />
       default:
+        // Check if it's a component from the registry
+        const componentInfo = componentRegistry[window.component]
+        if (componentInfo) {
+          const Component = componentInfo.component
+          // Special handling for AllProjects component
+          if (window.component === 'all-projects') {
+            return <Component onOpenInBrowser={handleOpenInBrowser} />
+          }
+          return <Component />
+        }
+        
         return (
           <Card className="h-full border-0 shadow-none">
             <CardContent className="flex items-center justify-center h-full p-8">

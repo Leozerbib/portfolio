@@ -90,7 +90,6 @@ const GalleryApp: React.FC<GalleryAppProps> = React.memo(() => {
   const [images, setImages] = useState<ImageFile[]>([])
   const [folders, setFolders] = useState<FolderStructure[]>([])
   const [loading, setLoading] = useState(true)
-  const [imageLoadingStates, setImageLoadingStates] = useState<Map<string, boolean>>(new Map())
 
   // Debounce search query for better performance
   const debouncedSearchQuery = useDebounce(searchQuery, 300)

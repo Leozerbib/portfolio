@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useCallback, Suspense } from 'react'
-import { AlertCircle, RefreshCw, ExternalLink, Copy, Download } from 'lucide-react'
+import { AlertCircle, RefreshCw, ExternalLink } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -16,6 +16,8 @@ import { componentRegistry } from '@/lib/component-registry'
 export interface ComponentViewerProps {
   /** Component ID to render */
   componentId?: string
+  /** Props to pass to the rendered component */
+  props?: Record<string, any>
   /** Content type */
   contentType?: 'component' | 'html' | 'home' | 'project'
   /** HTML content fallback */
@@ -30,6 +32,8 @@ export interface ComponentViewerProps {
   className?: string
   /** Custom error message */
   errorMessage?: string
+  /** Open in browser callback */
+  onOpenInBrowser?: (url: string) => void
 }
 
 /**
@@ -47,13 +51,14 @@ interface ErrorState {
  */
 export function ComponentViewer({
   componentId,
+  props: componentProps,
   contentType = 'component',
   htmlContent,
   isLoading = false,
   url = '',
   onNavigate,
   className,
-  errorMessage
+  errorMessage,
 }: ComponentViewerProps) {
   const [error, setError] = useState<ErrorState>({ hasError: false })
 
@@ -69,51 +74,31 @@ export function ComponentViewer({
   }, [onNavigate, url])
 
   /**
-   * Copies content to clipboard
-   */
-  const handleCopyContent = useCallback(async () => {
-    try {
-      const content = componentId ? `Component: ${componentId}` : htmlContent || ''
-      await navigator.clipboard.writeText(content)
-      // Could add toast notification here
-    } catch (err) {
-      console.error('Failed to copy content:', err)
-    }
-  }, [componentId, htmlContent])
-
-  /**
-   * Downloads content
-   */
-  const handleDownload = useCallback(() => {
-    try {
-      const content = componentId ? `Component: ${componentId}` : htmlContent || ''
-      const blob = new Blob([content], { type: 'text/plain' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${componentId || 'content'}-${Date.now()}.txt`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    } catch (err) {
-      console.error('Failed to download content:', err)
-    }
-  }, [componentId, htmlContent])
-
-  /**
    * Renders the component content
    */
   const renderContent = useCallback(() => {
+    console.log('🎯 ComponentViewer - renderContent called with:', { contentType, componentId, hasHtmlContent: !!htmlContent })
+    
     if (contentType === 'component' && componentId) {
       try {
         const componentInfo = componentRegistry[componentId]
         if (!componentInfo) {
           throw new Error(`Component "${componentId}" not found in registry`)
         }
+        
         const Component = componentInfo.component
-        return <Component />
+        
+        // Merge passed props with default props
+        const finalProps = {
+          ...componentProps,
+          ...(componentId === 'all-projects' && onNavigate 
+            ? { onOpenInBrowser: (projectId: string) => onNavigate(`project:${projectId}`) }
+            : {})
+        }
+        
+        return <Component {...finalProps} />
       } catch (err) {
+        console.error('🎯 ComponentViewer - Error rendering component:', err)
         setError({
           hasError: true,
           error: err as Error,
@@ -146,14 +131,14 @@ export function ComponentViewer({
             </p>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-8">
               <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer" 
-                    onClick={() => onNavigate?.('project:all-projects')}>
+                    onClick={() => onNavigate?.('projects:all')}>
                 <h3 className="font-semibold mb-2">All Projects</h3>
                 <p className="text-sm text-muted-foreground">Browse all portfolio projects</p>
               </Card>
               <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer"
                     onClick={() => onNavigate?.('project:enchere')}>
                 <h3 className="font-semibold mb-2">Featured Project</h3>
-                <p className="text-sm text-muted-foreground">Système d'Enchères</p>
+                <p className="text-sm text-muted-foreground">Système d Enchères</p>
               </Card>
             </div>
           </div>
@@ -162,7 +147,7 @@ export function ComponentViewer({
     }
 
     return null
-  }, [contentType, componentId, htmlContent, onNavigate])
+  }, [contentType, componentId, htmlContent, componentProps, onNavigate])
 
   // Show loading state
   if (isLoading) {
@@ -271,13 +256,10 @@ export function ComponentViewer({
     )
   }
 
-  const displayName = componentId || url || 'Content'
-  const contentSize = componentId ? `Component: ${componentId}` : htmlContent?.length || 0
-
   return (
     <div className={cn("flex flex-col h-full bg-background", className)}>
       {/* Content Display */}
-      <div className="flex-1 relative overflow-hidden">
+      <div className="flex-1 relative overflow-auto">
         <Suspense fallback={
           <div className="flex items-center justify-center h-full">
             <div className="flex items-center space-x-2">

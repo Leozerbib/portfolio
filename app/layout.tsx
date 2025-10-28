@@ -16,6 +16,8 @@ const geistMono = Geist_Mono({
 const pixer = Pixelify_Sans({
   variable: "--font-pixer",
   subsets: ["latin"],
+  display: "swap",
+  preload: true,
 });
 
 export const metadata: Metadata = {

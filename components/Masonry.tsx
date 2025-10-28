@@ -84,7 +84,7 @@ const getImageDimensions = (src: string): Promise<{ width: number; height: numbe
 
 // Intersection Observer hook for lazy loading
 const useIntersectionObserver = (
-  ref: React.RefObject<Element>,
+  ref: React.RefObject<HTMLDivElement | null>,
   options: IntersectionObserverInit = {}
 ) => {
   const [isIntersecting, setIsIntersecting] = useState(false);
@@ -120,7 +120,7 @@ const OptimizedImage: React.FC<{
 }> = ({ src, alt, width, height, className, priority = false, onLoad }) => {
   const [isLoaded, setIsLoaded] = useState(false);
   const [isError, setIsError] = useState(false);
-  const imageRef = useRef<HTMLDivElement>(null);
+  const imageRef = useRef<HTMLDivElement | null>(null);
   const isVisible = useIntersectionObserver(imageRef, { rootMargin: '100px' });
 
   const handleLoad = useCallback(() => {
@@ -253,6 +253,7 @@ const Masonry: React.FC<MasonryProps> = ({
   const [imagesReady, setImagesReady] = useState(false);
   const [imageDimensions, setImageDimensions] = useState<Map<string, { width: number; height: number }>>(new Map());
   const [hoveredImageId, setHoveredImageId] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [loadedImages, setLoadedImages] = useState<Set<string>>(new Set());
   const [scrollTop, setScrollTop] = useState(0);
   const hasMounted = useRef(false);
