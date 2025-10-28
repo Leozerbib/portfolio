@@ -5,6 +5,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ['three'],
   images: {
     unoptimized: true, // Allow local images without optimization
+    qualities: [50, 75, 85, 90, 95, 100], // Configure allowed quality values
     remotePatterns: [
       {
         protocol: 'https',

@@ -241,9 +241,10 @@ export class FileSystemUtils {
 
   static getAssociatedApp(extension: string): string | undefined {
     const associations: Record<string, string> = {
-      'txt': 'notepad',
-      'md': 'notepad',
+      'txt': 'markdown',
+      'md': 'markdown',
       'html': 'browser',
+      'tsx': 'browser',
       'css': 'vscode',
       'js': 'vscode',
       'json': 'vscode',
@@ -1185,6 +1186,107 @@ Enjoy exploring!`,
     FileSystemUtils.addToFolder(about, cvFile)
     FileSystemUtils.addToFolder(about, meFile)
     FileSystemUtils.addToFolder(about, profilePicture)
+    
+    const projectFiles = [
+      {
+        id: 'enchere',
+        name: 'enchere.tsx',
+        componentId: 'enchere',
+        type: 'component',
+        size: 1024,
+        path: '/Projects/enchere.tsx',
+        mimeType: 'application/tsx'
+      },
+      {
+        id: 'gile',
+        name: 'gile.tsx',
+        componentId: 'gile',
+        type: 'component',
+        size: 1200,
+        path: '/Projects/gile.tsx',
+        mimeType: 'application/tsx'
+      },
+      {
+        id: 'helixir',
+        name: 'helixir.tsx',
+        componentId: 'helixir',
+        type: 'component',
+        size: 1400,
+        path: '/Projects/helixir.tsx',
+        mimeType: 'application/tsx'
+      },
+      {
+        id: 'lab',
+        name: 'lab.tsx',
+        componentId: 'lab',
+        type: 'component',
+        size: 1600,
+        path: '/Projects/lab.tsx',
+        mimeType: 'application/tsx'
+      },
+      {
+        id: 'optimisationPostgres',
+        name: 'optimisationPostgres.tsx',
+        componentId: 'optimisationPostgres',
+        type: 'component',
+        size: 1300,
+        path: '/Projects/optimisationPostgres.tsx',
+        mimeType: 'application/tsx'
+      },
+      {
+        id: 'satviewer',
+        name: 'satviewer.tsx',
+        componentId: 'satviewer',
+        type: 'component',
+        size: 1800,
+        path: '/Projects/satviewer.tsx',
+        mimeType: 'application/tsx'
+      },
+      {
+        id: 'spotmap',
+        name: 'spotmap.tsx',
+        componentId: 'spotmap',
+        type: 'component',
+        size: 1500,
+        path: '/Projects/spotmap.tsx',
+        mimeType: 'application/tsx'
+      },
+      {
+        id: 'all-projects',
+        name: 'all-projects.tsx',
+        componentId: 'all-projects',
+        type: 'component',
+        size: 2500,
+        path: '/Projects/all-projects.tsx',
+        mimeType: 'application/tsx'
+      }
+    ]
+
+    // Add project files to Projects folder
+    projectFiles.forEach(fileData => {
+      console.log('useOS - Creating file for:', fileData)
+      
+      const file = FileSystemUtils.createFile(
+        fileData.id,
+        fileData.name,
+        fileData.path,
+        'tsx', // extension
+        fileData.size,
+        fileData.content || '', // content
+        Globe // icon
+      )
+      
+      // Set additional properties for component files
+      if (fileData.componentId) {
+        file.componentId = fileData.componentId
+      }
+      if (fileData.type) {
+        file.type = fileData.type
+      }
+      
+      console.log('useOS - Created file:', file)
+      FileSystemUtils.addToFolder(projects, file)
+    })
     
     return {
       root,

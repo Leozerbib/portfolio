@@ -446,7 +446,7 @@ export function Window({ baba_window }: WindowProps) {
         <GradualBlur
         target="parent"
         position="bottom"
-        height="3rem"
+        height="2rem"
         strength={1}
         divCount={3}
         curve="bezier"
