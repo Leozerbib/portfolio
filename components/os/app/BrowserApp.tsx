@@ -12,7 +12,8 @@ import { ComponentViewer } from './browser/ComponentViewer'
 import AllProjects from '../projet/AllProjects'
 import * as browserUtils from '@/lib/browser-utils'
 import { 
-  getContentType
+  getContentType,
+  getPageTitle
 } from '@/lib/browser-utils'
 import { 
   createTab,
@@ -21,11 +22,17 @@ import {
   removeTab, 
   updateTab, 
   getNextActiveTab,
+  updateTabUrl,
+  navigateBack,
+  navigateForward,
   type BrowserTab
 } from '@/lib/tab-utils'
 import { 
   type SearchSuggestion
 } from '@/lib/search-utils'
+import { Project } from './browser/ProjectPage'
+import { useOS } from '@/hooks/useOS'
+import { componentRegistry } from '@/lib/component-registry'
 
 /**
  * Props for the BrowserApp component
@@ -35,18 +42,6 @@ export interface BrowserAppProps {
   initialUrl?: string
   onNavigate?: (url: string) => void
   onOpenInBrowser?: (url: string) => void
-  projects?: Array<{
-    id: string
-    name: string
-    description: string
-    path: string
-    htmlContent?: string
-    componentId?: string
-    type?: 'component' | 'html'
-    technologies?: string[]
-    demoUrl?: string
-    githubUrl?: string
-  }>
 }
 
 /**
@@ -59,199 +54,113 @@ export function BrowserApp({
   initialUrl = 'home', 
   onNavigate,
   onOpenInBrowser,
-  projects = []
 }: BrowserAppProps) {
+  const { state, dispatch } = useOS()
+  
   // State management for tabs and navigation
   const [tabs, setTabs] = useState<BrowserTab[]>(() => [createTab('home')])
   const [activeTabId, setActiveTabId] = useState<string>(() => tabs[0]?.id || '')
   const [searchQuery, setSearchQuery] = useState('')
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [projects, setProjects] = useState<Project[]>([])
 
+  useEffect(() => {
+    const projectsNode: any = state.fileSystem.root.children.get('projects')
+    if (projectsNode && projectsNode.type === 'folder') {
+      const files = Array.from(projectsNode.children.values()).filter((item: any) => item.type === 'file')
+      const mapped: Project[] = files.map((f: any) => {
+        console.log('🌐 BrowserApp - Processing file:', f)
+        const compId = f.metadata?.componentId || f.id
+        const info = componentRegistry[compId]
+        return {
+          id: f.id,
+          name: compId,
+          description: info?.description || '',
+          path: f.path,
+          type: f.metadata?.componentType || (info ? 'component' : 'html'),
+          technologies: info?.technologies || ['React', 'TypeScript']
+        }
+      })
+      setProjects(mapped)
+      console.log('🌐 BrowserApp - Loaded projects:', mapped)
+    }
+  }, [state.fileSystem.root])
   /**
    * Loads content for a specific tab
    */
   const loadTabContent = useCallback(async (tabId: string, url: string) => {
     console.log('🔄 BrowserApp - loadTabContent called with:', { tabId, url })
     
+    // Update the active tab to the one being loaded
+    setActiveTabId(tabId)
+    
+    // Update tab with new URL and set loading state
     setTabs(prevTabs => {
       const tab = findTabById(prevTabs, tabId)
       if (!tab) return prevTabs
       
-      return updateTab(prevTabs, tabId, { ...tab, isLoading: true })
+      const updatedTab = updateTabUrl(tab, url)
+      return updateTab(prevTabs, tabId, updatedTab)
     })
 
     try {
       // Simulate loading delay
       await new Promise(resolve => setTimeout(resolve, 300))
       
-      let content: React.ReactNode = null
-      const contentType = getContentType(url)
-      console.log('🔄 BrowserApp - Content type:', contentType)
-      
-      if (contentType === 'project') {
-        let projectId: string
-        
-        // Handle special case for "projects:all" - redirect to all-projects component
-        if (url.startsWith('projects:')) {
-          projectId = url.replace('projects:', '')
-          if (projectId === 'all') {
-            projectId = 'all-projects'
-          }
-        } else {
-          projectId = url.replace('project:', '')
-        }
-        
-        console.log('🔄 BrowserApp - Looking for project ID:', projectId)
-        console.log('🔄 BrowserApp - Available projects:', projects.map(p => ({ id: p.id, type: p.type, componentId: p.componentId })))
-        
-        const project = projects.find(p => p.id === projectId)
-        console.log('🔄 BrowserApp - Found project:', project)
-        
-        if (project?.type === 'component' && project.componentId) {
-          // For TSX components, render ComponentViewer
-          content = (
-            <ComponentViewer 
-              componentId={project.componentId} 
-              onOpenInBrowser={onOpenInBrowser}
-            />
-          )
-        } else if (projectId === 'all-projects') {
-          // Render AllProjects component
-          content = (
-            <AllProjects 
-              projects={projects.map(p => ({
-                id: p.id,
-                name: p.name,
-                title: p.name,
-                description: p.description,
-                technologies: p.technologies || ['React', 'TypeScript'],
-                category: 'web' as const,
-                status: 'active' as const,
-                lastUpdated: '2024-01-15',
-                size: 2048,
-                path: p.path,
-                icon: '🚀'
-              }))}
-              onProjectSelect={(project) => {
-                console.log('🔗 AllProjects - Project clicked:', project.name)
-                console.log('🔗 AllProjects - Using tabId:', tabId)
-                console.log('🔗 AllProjects - About to call loadTabContent with:', tabId, `project:${project.id}`)
-                // Use the same pattern as HomePage - use tabId from loadTabContent context
-                loadTabContent(tabId, `project:${project.id}`)
-              }}
-              onOpenInBrowser={(projectId) => {
-                console.log('🔗 AllProjects - Opening project in browser:', projectId)
-                console.log('🔗 AllProjects - Using tabId:', tabId)
-                console.log('🔗 AllProjects - About to call loadTabContent with:', tabId, `project:${projectId}`)
-                // Use the same pattern as HomePage - use tabId from loadTabContent context
-                loadTabContent(tabId, `project:${projectId}`)
-              }}
-            />
-          )
-        } else {
-          // Use ComponentViewer for project pages
-          console.log('🔍 BrowserApp - Looking for project:', projectId)
-          console.log('🔍 BrowserApp - Available projects:', projects.map(p => p.id))
-          const project = projects.find(p => p.id === projectId)
-          console.log('🔍 BrowserApp - Found project:', project)
-          
-          const projectProps = browserUtils.getProjectComponentProps(project)
-          if (projectProps) {
-            content = (
-              <ComponentViewer 
-                componentId={browserUtils.getProjectComponentId()}
-                props={{
-                  ...projectProps,
-                  onNavigate: (url: string) => {
-                    loadTabContent(tabId, url)
-                  },
-                  onBack: () => {
-                    // Navigate back to home or previous page
-                    loadTabContent(tabId, 'home')
-                  }
-                }}
-                onOpenInBrowser={onOpenInBrowser}
-              />
-            )
-          } else {
-            // Show error if project not found
-            content = (
-              <ComponentViewer 
-                componentId={browserUtils.getErrorComponentId()}
-                props={browserUtils.getErrorComponentProps('Project not found')}
-                onOpenInBrowser={onOpenInBrowser}
-              />
-            )
-          }
-        }
-      } else if (contentType === 'html') {
-        const htmlContent = url.startsWith('data:') ? decodeURIComponent(url.split(',')[1]) : ''
-        content = <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
-      } else if (contentType === 'home') {
-        // Use ComponentViewer for home page
-        content = (
-          <ComponentViewer 
-            componentId={browserUtils.getHomeComponentId()}
-            props={{
-              ...browserUtils.getHomeComponentProps(),
-              onNavigate: (url: string) => {
-                loadTabContent(tabId, url)
-              }
-            }}
-            onOpenInBrowser={onOpenInBrowser}
-          />
-        )
-      } else {
-        // Use ComponentViewer for error pages
-        content = (
-          <ComponentViewer 
-            componentId={browserUtils.getErrorComponentId()}
-            props={{
-              ...browserUtils.getErrorComponentProps('Page not found'),
-              onNavigate: (url: string) => {
-                loadTabContent(tabId, url)
-              },
-              onRefresh: () => {
-                loadTabContent(tabId, url)
-              },
-              onBack: () => {
-                loadTabContent(tabId, 'home')
-              }
-            }}
-            onOpenInBrowser={onOpenInBrowser}
-          />
-        )
-      }
-
-      // Update tab with loaded content
+      // Update loading state to false
       setTabs(prevTabs => {
         const tab = findTabById(prevTabs, tabId)
         if (!tab) return prevTabs
         
-        const updatedTab = updateTabContent(tab, content)
-        return updateTab(prevTabs, tabId, updatedTab)
+        return updateTab(prevTabs, tabId, { ...tab, isLoading: false })
       })
       
     } catch (error) {
       console.error('Error loading tab content:', error)
-      const errorContent = (
-        <ComponentViewer 
-          componentId={browserUtils.getErrorComponentId()}
-          props={browserUtils.getErrorComponentProps('Error loading content')}
-          onOpenInBrowser={onOpenInBrowser}
-        />
-      )
       
       setTabs(prevTabs => {
         const tab = findTabById(prevTabs, tabId)
         if (!tab) return prevTabs
         
-        const updatedTab = updateTabContent(tab, errorContent)
-        return updateTab(prevTabs, tabId, updatedTab)
+        return updateTab(prevTabs, tabId, { ...tab, isLoading: false })
       })
     }
-  }, [projects, onOpenInBrowser])
+  }, [])
+
+  const goBack = useCallback((tabId: string) => {
+    setTabs(prevTabs => {
+      const tab = findTabById(prevTabs, tabId)
+      if (!tab) return prevTabs
+      const updated = navigateBack(tab)
+      if (!updated) return prevTabs
+      return updateTab(prevTabs, tabId, updated)
+    })
+    setTimeout(() => {
+      setTabs(prevTabs => {
+        const tab = findTabById(prevTabs, tabId)
+        if (!tab) return prevTabs
+        return updateTab(prevTabs, tabId, { ...tab, isLoading: false })
+      })
+    }, 300)
+  }, [])
+
+  const goForward = useCallback((tabId: string) => {
+    setTabs(prevTabs => {
+      const tab = findTabById(prevTabs, tabId)
+      if (!tab) return prevTabs
+      const updated = navigateForward(tab)
+      if (!updated) return prevTabs
+      return updateTab(prevTabs, tabId, updated)
+    })
+    setTimeout(() => {
+      setTabs(prevTabs => {
+        const tab = findTabById(prevTabs, tabId)
+        if (!tab) return prevTabs
+        return updateTab(prevTabs, tabId, { ...tab, isLoading: false })
+      })
+    }, 300)
+  }, [])
 
   /**
    * Creates a new browser tab
@@ -382,26 +291,146 @@ export function BrowserApp({
     setShowSuggestions(false)
   }, [activeTabId, loadTabContent, handleSearch])
 
-  // Create initial tab
+  // Create initial tab on mount
   useEffect(() => {
     if (tabs.length === 0) {
-      createNewTab(initialUrl)
+      createNewTab(initialUrl || 'home')
+    } else if (activeTabId) {
+      // Ensure the initial tab actually loads once on mount
+      const initialActiveTab = tabs.find(t => t.id === activeTabId)
+      if (initialActiveTab && initialActiveTab.isLoading) {
+        loadTabContent(initialActiveTab.id, initialActiveTab.url)
+      }
     }
-  }, [tabs.length, initialUrl, createNewTab])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Handle initialUrl changes for existing browser instances
+  // Only create a new tab if initialUrl actually changed and is not the same as current tab URL
   useEffect(() => {
     if (initialUrl && initialUrl !== 'home' && tabs.length > 0) {
-      // Create a new tab with the new URL
-      createNewTab(initialUrl)
+      const activeTab = tabs.find(tab => tab.id === activeTabId)
+      if (activeTab && activeTab.url !== initialUrl) {
+        // Create a new tab with the new URL
+        createNewTab(initialUrl)
+      }
     }
-  }, [createNewTab, initialUrl, tabs.length])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialUrl])
 
   // Get active tab
   const activeTab = useMemo(() => 
     tabs.find(tab => tab.id === activeTabId), 
     [tabs, activeTabId]
   )
+
+  /**
+   * Renders tab content dynamically based on URL
+   */
+  const renderTabContent = useCallback((tab: BrowserTab) => {
+    const contentType = getContentType(tab.url)
+    
+    if (contentType === 'project') {
+      let projectId: string
+      
+      if (tab.url.startsWith('projects:')) {
+        projectId = tab.url.replace('projects:', '')
+        if (projectId === 'all') {
+          projectId = 'all-projects'
+        }
+      } else {
+        projectId = tab.url.replace('project:', '')
+      }
+      
+      const project = projects.find(p => p.id === projectId)
+
+      
+      if (project?.type === 'component') {
+        console.log('🌐 BrowserApp - Rendering all-projects component')
+        const allProjectsProps = {
+          projects: projects.map(p => ({
+            id: p.id,
+            name: p.name,
+            title: p.name,
+            description: p.description,
+            technologies: p.technologies || ['React', 'TypeScript'],
+            category: 'web' as const,
+            status: 'active' as const,
+            lastUpdated: '2024-01-15',
+            size: 2048,
+            path: p.path,
+            icon: '🚀'
+          })),
+          onProjectSelect: (project: any) => {
+            console.log('🔗 AllProjects - Project clicked:', project.name)
+            loadTabContent(tab.id, `project:${project.id}`)
+          },
+          onOpenInBrowser: (projectId: string) => {
+            console.log('🔗 AllProjects - Opening project:', projectId)
+            loadTabContent(tab.id, `project:${projectId}`)
+          }
+        }
+        console.log('📘 BrowserApp - Rendering all-projects with props:', { hasOnProjectSelect: !!allProjectsProps.onProjectSelect, hasOnOpenInBrowser: !!allProjectsProps.onOpenInBrowser })
+        return (
+          <ComponentViewer 
+            componentId={project.id}
+            props={allProjectsProps}
+            onNavigate={(url: string) => loadTabContent(tab.id, url)}
+          />
+        )
+      } else {
+        const projectProps = browserUtils.getProjectComponentProps(project)
+        if (projectProps) {
+          return (
+            <ComponentViewer 
+              componentId={browserUtils.getProjectComponentId()}
+              props={{
+                ...projectProps,
+                onNavigate: (url: string) => loadTabContent(tab.id, url),
+                onBack: () => loadTabContent(tab.id, 'home')
+              }}
+              onOpenInBrowser={onOpenInBrowser}
+            />
+          )
+        } else {
+          return (
+            <ComponentViewer 
+              componentId={browserUtils.getErrorComponentId()}
+              props={browserUtils.getErrorComponentProps('Project not found')}
+              onOpenInBrowser={onOpenInBrowser}
+            />
+          )
+        }
+      }
+    } else if (contentType === 'html') {
+      const htmlContent = tab.url.startsWith('data:') ? decodeURIComponent(tab.url.split(',')[1]) : ''
+      return <div dangerouslySetInnerHTML={{ __html: htmlContent }} />
+    } else if (contentType === 'home') {
+      return (
+        <ComponentViewer 
+          componentId={browserUtils.getHomeComponentId()}
+          props={{
+            ...browserUtils.getHomeComponentProps(),
+            onNavigate: (url: string) => loadTabContent(tab.id, url)
+          }}
+          onOpenInBrowser={onOpenInBrowser}
+        />
+      )
+    } else {
+      return (
+        <ComponentViewer 
+          componentId={browserUtils.getErrorComponentId()}
+          props={{
+            ...browserUtils.getErrorComponentProps('Page not found'),
+            onNavigate: (url: string) => loadTabContent(tab.id, url),
+            onRefresh: () => loadTabContent(tab.id, tab.url),
+            onBack: () => loadTabContent(tab.id, 'home')
+          }}
+          onOpenInBrowser={onOpenInBrowser}
+        />
+      )
+    }
+  }, [projects, onOpenInBrowser, loadTabContent])
 
   return (
     <div className={cn("flex flex-col h-full bg-background", className)}>
@@ -459,6 +488,7 @@ export function BrowserApp({
               size="sm"
               disabled={!activeTab?.canGoBack}
               className="w-8 h-8 p-0"
+              onClick={() => activeTab && goBack(activeTab.id)}
             >
               <ArrowLeft className="w-4 h-4" />
             </Button>
@@ -467,6 +497,7 @@ export function BrowserApp({
               size="sm"
               disabled={!activeTab?.canGoForward}
               className="w-8 h-8 p-0"
+              onClick={() => activeTab && goForward(activeTab.id)}
             >
               <ArrowRight className="w-4 h-4" />
             </Button>
@@ -564,7 +595,7 @@ export function BrowserApp({
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
               </div>
             ) : (
-              activeTab.content
+              renderTabContent(activeTab)
             )}
           </div>
         )}

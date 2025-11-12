@@ -12,7 +12,6 @@ import GalleryApp from '../app/GalleryApp'
 import { MarkdownApp } from '../app/MarkdownApp'
 import { cn } from '@/lib/utils'
 import { BrowserApp } from '../app/BrowserApp'
-import { componentRegistry } from '@/lib/component-registry'
 
 interface WindowContentProps {
   window: OSWindow
@@ -33,18 +32,6 @@ export function WindowContent({ window }: WindowContentProps) {
       </div>
     )
   }
-
-  // Create projects array from component registry for BrowserApp compatibility
-  const projects = Object.values(componentRegistry)
-    .map(comp => ({
-      id: comp.id,
-      name: comp.name,
-      description: comp.description,
-      path: `/components/os/projet/${comp.name}.tsx`,
-      componentId: comp.id, // Use the component ID for rendering
-      type: 'component' as const, // All registry components are TSX components
-      htmlContent: undefined // Components don't have HTML content
-    }))
   
   // Handler for opening projects in browser
   const handleOpenInBrowser = (projectId: string) => {
@@ -87,7 +74,6 @@ export function WindowContent({ window }: WindowContentProps) {
     switch (window.component) {
       case 'Browser':
         return <BrowserApp 
-          projects={projects} 
           initialUrl={window.initialUrl}
         />
       case 'Terminal':
@@ -102,18 +88,7 @@ export function WindowContent({ window }: WindowContentProps) {
         return <GalleryApp windowId={window.id} />
       case 'MarkdownApp':
         return <MarkdownApp />
-      default:
-        // Check if it's a component from the registry
-        const componentInfo = componentRegistry[window.component]
-        if (componentInfo) {
-          const Component = componentInfo.component
-          // Special handling for AllProjects component
-          if (window.component === 'all-projects') {
-            return <Component onOpenInBrowser={handleOpenInBrowser} />
-          }
-          return <Component />
-        }
-        
+      default:       
         return (
           <Card className="h-full border-0 shadow-none">
             <CardContent className="flex items-center justify-center h-full p-8">

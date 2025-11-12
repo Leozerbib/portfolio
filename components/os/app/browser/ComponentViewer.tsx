@@ -78,6 +78,7 @@ export function ComponentViewer({
    */
   const renderContent = useCallback(() => {
     console.log('🎯 ComponentViewer - renderContent called with:', { contentType, componentId, hasHtmlContent: !!htmlContent })
+    console.log('🎯 ComponentViewer - componentProps:', componentProps)
     
     if (contentType === 'component' && componentId) {
       try {
@@ -89,12 +90,19 @@ export function ComponentViewer({
         const Component = componentInfo.component
         
         // Merge passed props with default props
+        // For all-projects, if callbacks aren't provided via props, use onNavigate as fallback
+        const baseProps = componentProps ?? {}
         const finalProps = {
-          ...componentProps,
-          ...(componentId === 'all-projects' && onNavigate 
-            ? { onOpenInBrowser: (projectId: string) => onNavigate(`project:${projectId}`) }
+          ...baseProps,
+          ...(componentId === 'all-projects' && onNavigate && !baseProps?.onOpenInBrowser
+            ? { 
+                onOpenInBrowser: (projectId: string) => onNavigate(`project:${projectId}`),
+                onProjectSelect: (project: any) => onNavigate(`project:${project.id}`)
+              }
             : {})
         }
+        
+        console.log('🎯 ComponentViewer - Rendering component with props:', { componentId, hasOnOpenInBrowser: !!finalProps.onOpenInBrowser, hasOnProjectSelect: !!finalProps.onProjectSelect })
         
         return <Component {...finalProps} />
       } catch (err) {

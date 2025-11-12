@@ -72,111 +72,12 @@ export default function AllProjects({
   const [viewMode, setViewMode] = useState<'grid' | 'list'>(initialViewMode)
   const [isLoading, setIsLoading] = useState(true)
 
-  // Project data with all created components - integrated with BrowserApp
-  const mockProjects: Project[] = [
-    {
-      id: 'enchere',
-      name: 'Système d\'Enchères',
-      title: 'Système d\'Enchères',
-      description: 'A comprehensive online auction system with real-time bidding, user authentication, payment processing, and advanced security features.',
-      technologies: ['React', 'Node.js', 'WebSocket', 'PostgreSQL', 'Stripe', 'Redis'],
-      category: 'web',
-      status: 'completed',
-      lastUpdated: '2024-01-15',
-      size: 2048,
-      path: '/Projects/enchere.tsx',
-      icon: '🏆',
-      featured: true
-    },
-    {
-      id: 'gile',
-      name: 'Gile - File Manager',
-      title: 'Gile - File Manager',
-      description: 'Modern file management system with cloud integration, advanced search, collaborative features, and cross-platform support.',
-      technologies: ['TypeScript', 'Electron', 'AWS S3', 'Redis', 'SQLite', 'React'],
-      category: 'desktop',
-      status: 'active',
-      lastUpdated: '2024-01-20',
-      size: 1856,
-      path: '/Projects/gile.tsx',
-      icon: '📁',
-      featured: true
-    },
-    {
-      id: 'helixir',
-      name: 'Helixir - Code Editor',
-      title: 'Helixir - Code Editor',
-      description: 'Next-generation code editor with AI assistance, collaborative editing, advanced debugging tools, and modern interface.',
-      technologies: ['Monaco Editor', 'WebAssembly', 'AI/ML', 'Docker', 'TypeScript', 'Rust'],
-      category: 'tools',
-      status: 'in-progress',
-      lastUpdated: '2024-01-18',
-      size: 2304,
-      path: '/Projects/helixir.tsx',
-      icon: '⚡',
-      featured: true
-    },
-    {
-      id: 'lab',
-      name: 'Lab - Experimental Platform',
-      title: 'Lab - Experimental Platform',
-      description: 'Research and development platform for testing new technologies, innovative web solutions, and cutting-edge experiments.',
-      technologies: ['WebGL', 'Three.js', 'WebRTC', 'GraphQL', 'WebAssembly', 'WebXR'],
-      category: 'web',
-      status: 'active',
-      lastUpdated: '2024-01-22',
-      size: 1920,
-      path: '/Projects/lab.tsx',
-      icon: '🧪'
-    },
-    {
-      id: 'optimisationPostgres',
-      name: 'PostgreSQL Optimization',
-      title: 'PostgreSQL Optimization',
-      description: 'Advanced database optimization toolkit with performance monitoring, query analysis, and real-time metrics dashboard.',
-      technologies: ['PostgreSQL', 'Python', 'Go', 'Grafana', 'Prometheus', 'Docker'],
-      category: 'database',
-      status: 'completed',
-      lastUpdated: '2024-01-10',
-      size: 1792,
-      path: '/Projects/optimisationPostgres.tsx',
-      icon: '🐘'
-    },
-    {
-      id: 'satviewer',
-      name: 'SatViewer - Satellite Tracking',
-      title: 'SatViewer - Satellite Tracking',
-      description: 'Real-time satellite tracking application with 3D visualization, orbital predictions, and comprehensive space data.',
-      technologies: ['React', 'Three.js', 'WebGL', 'Node.js', 'Socket.io', 'PostgreSQL'],
-      category: 'web',
-      status: 'completed',
-      lastUpdated: '2024-01-12',
-      size: 2176,
-      path: '/Projects/satviewer.tsx',
-      icon: '🛰️',
-      featured: true
-    },
-    {
-      id: 'spotmap',
-      name: 'SpotMap - Location Discovery',
-      title: 'SpotMap - Location Discovery',
-      description: 'Interactive mapping application for discovering and sharing interesting locations, hidden gems, and community-driven content.',
-      technologies: ['React Native', 'Mapbox', 'Node.js', 'MongoDB', 'Socket.io', 'AWS S3'],
-      category: 'mobile',
-      status: 'active',
-      lastUpdated: '2024-01-25',
-      size: 1984,
-      path: '/Projects/spotmap.tsx',
-      icon: '📍'
-    }
-  ]
-
   // Initialize projects
   useEffect(() => {
     setIsLoading(true)
     
     // Use external projects if provided, otherwise use mock data
-    const projectsToUse = externalProjects && externalProjects.length > 0 ? externalProjects : mockProjects
+    const projectsToUse = externalProjects && externalProjects.length > 0 ? externalProjects : []
     console.log('🎯 AllProjects - Using projects:', projectsToUse.length, 'external:', !!externalProjects)
     
     // Simulate API call delay
