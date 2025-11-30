@@ -1,7 +1,7 @@
 'use client'
 
-import { useMemo, useState } from 'react'
-import { useOS, osActions } from '@/hooks/useOS'
+import { useMemo, useState, useEffect, useRef } from 'react'
+import { useOS, osActions, FileSystemUtils, OSFile } from '@/hooks/useOS'
 import { useTaskbarAutoHide } from '@/hooks/useTaskbarAutoHide'
 import { MacOSDock, type DockApp } from '@/components/ui/shadcn-io/mac-os-dock'
 import { cn } from '@/lib/utils'
@@ -10,6 +10,22 @@ export function Taskbar() {
   const { state, dispatch } = useOS()
   const { isHidden } = useTaskbarAutoHide()
   const [ showTaskbar, setShowTaskbar ] = useState(false)
+
+  const hasOpenedMarkdown = useRef(false)
+
+  useEffect(() => {
+    if (hasOpenedMarkdown.current) return
+    const root = state.fileSystem?.root
+    if (!root) return
+    const item = FileSystemUtils.findItemByPath(root, '/Documents/README.md')
+    if (item && item.type === 'file') {
+      const app = state.apps.find(a => a.id === 'markdown')
+      if (!app) return
+      const markdownAppWithFile = { ...app, initialFile: item as OSFile }
+      dispatch(osActions.openWindow(markdownAppWithFile))
+      hasOpenedMarkdown.current = true
+    }
+  }, [state.fileSystem?.root, state.apps, dispatch])
 
   const handleTaskbarAppClick = (appId: string) => {
     const app = state.apps.find(a => a.id === appId)

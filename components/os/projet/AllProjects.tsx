@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Separator } from '@/components/ui/separator'
 import { 
   Search, 
@@ -28,8 +29,8 @@ interface Project {
   title: string
   description: string
   technologies: string[]
-  category: 'web' | 'mobile' | 'desktop' | 'ai' | 'database' | 'tools'
-  status: 'active' | 'completed' | 'in-progress' | 'archived'
+  category: 'Web' | 'Mobile' | 'Devops' | 'Ai' | 'Database'
+  status: 'active' | 'development' | 'completed'
   lastUpdated: string
   size: number
   path: string
@@ -78,7 +79,7 @@ export default function AllProjects({
     
     // Use external projects if provided, otherwise use mock data
     const projectsToUse = externalProjects && externalProjects.length > 0 ? externalProjects : []
-    console.log('🎯 AllProjects - Using projects:', projectsToUse.length, 'external:', !!externalProjects)
+    console.log('🎯 AllProjects - Using projects:', projectsToUse, 'external:', !!externalProjects)
     
     // Simulate API call delay
     setTimeout(() => {
@@ -117,14 +118,10 @@ export default function AllProjects({
     setFilteredProjects(filtered)
   }, [projects, searchQuery, selectedCategory, selectedStatus])
 
-  const handleProjectClick = (project: Project) => {
-    console.log('🎯 AllProjects - Project clicked:', project.id)
-    
+  const handleProjectClick = (project: Project) => {    
     if (onOpenInBrowser) {
-      console.log('🎯 AllProjects - Calling onOpenInBrowser with:', project.id)
       onOpenInBrowser(project.id)
     } else if (onProjectSelect) {
-      console.log('🎯 AllProjects - Calling onProjectSelect with:', project)
       onProjectSelect(project)
     } else {
       console.log('🎯 AllProjects - No callback available')
@@ -135,26 +132,24 @@ export default function AllProjects({
     switch (status) {
       case 'active': return 'bg-green-500'
       case 'completed': return 'bg-blue-500'
-      case 'in-progress': return 'bg-yellow-500'
-      case 'archived': return 'bg-gray-500'
+      case 'development': return 'bg-yellow-500'
       default: return 'bg-gray-500'
     }
   }
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
-      case 'web': return <Globe className="h-4 w-4" />
-      case 'mobile': return <Globe className="h-4 w-4" />
-      case 'desktop': return <Code className="h-4 w-4" />
-      case 'ai': return <Star className="h-4 w-4" />
-      case 'database': return <Code className="h-4 w-4" />
-      case 'tools': return <Code className="h-4 w-4" />
+      case 'Web': return <Globe className="h-4 w-4" />
+      case 'Mobile': return <Globe className="h-4 w-4" />
+      case 'Devops': return <Code className="h-4 w-4" />
+      case 'Ai': return <Star className="h-4 w-4" />
+      case 'Database': return <Code className="h-4 w-4" />
       default: return <Globe className="h-4 w-4" />
     }
   }
 
-  const categories = ['all', 'web', 'mobile', 'desktop', 'ai', 'database', 'tools']
-  const statuses = ['all', 'active', 'completed', 'in-progress', 'archived']
+  const categories = ['all', 'Web', 'Mobile', 'Devops', 'Ai', 'Database']
+  const statuses = ['all', 'active', 'development', 'completed']
 
   if (isLoading) {
     return (
@@ -192,30 +187,36 @@ export default function AllProjects({
           </div>
 
           {/* Category Filter */}
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="px-3 py-2 border border-input bg-background rounded-md text-sm"
-          >
-            {categories.map(category => (
-              <option key={category} value={category}>
-                {category === 'all' ? 'All Categories' : category.charAt(0).toUpperCase() + category.slice(1)}
-              </option>
-            ))}
-          </select>
+          <Select value={selectedCategory} onValueChange={(value) => setSelectedCategory(value)}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Categories" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((category) => (
+                <SelectItem key={category} value={category}>
+                  {category === 'all'
+                    ? 'All Categories'
+                    : category.charAt(0).toUpperCase() + category.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
           {/* Status Filter */}
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="px-3 py-2 border border-input bg-background rounded-md text-sm"
-          >
-            {statuses.map(status => (
-              <option key={status} value={status}>
-                {status === 'all' ? 'All Status' : status.charAt(0).toUpperCase() + status.slice(1)}
-              </option>
-            ))}
-          </select>
+          <Select value={selectedStatus} onValueChange={(value) => setSelectedStatus(value)}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {statuses.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {status === 'all'
+                    ? 'All Status'
+                    : status.charAt(0).toUpperCase() + status.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         {/* View Mode Toggle */}
@@ -271,7 +272,7 @@ export default function AllProjects({
             <Card 
               key={project.id}
               className={cn(
-                "group cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1",
+                "group cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 p-2",
                 project.featured && "ring-2 ring-primary/20",
                 viewMode === 'list' && "flex flex-row"
               )}

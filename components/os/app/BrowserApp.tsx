@@ -76,10 +76,14 @@ export function BrowserApp({
         return {
           id: f.id,
           name: compId,
+          status: info?.status || 'active',
           description: info?.description || '',
           path: f.path,
+          category: info?.category || 'web',
           type: f.metadata?.componentType || (info ? 'component' : 'html'),
-          technologies: info?.technologies || ['React', 'TypeScript']
+          technologies: info?.technologies || ['React', 'TypeScript'],
+          icon: info?.icon || '🌐',
+          createdAt: info?.createdAt || '2024-01-01',
         }
       })
       setProjects(mapped)
@@ -346,7 +350,7 @@ export function BrowserApp({
 
       
       if (project?.type === 'component') {
-        console.log('🌐 BrowserApp - Rendering all-projects component')
+        console.log('🌐 BrowserApp - Rendering all-projects component', projects)
         const allProjectsProps = {
           projects: projects.map(p => ({
             id: p.id,
@@ -354,23 +358,21 @@ export function BrowserApp({
             title: p.name,
             description: p.description,
             technologies: p.technologies || ['React', 'TypeScript'],
-            category: 'web' as const,
-            status: 'active' as const,
+            category: p.category || 'Browser',
+            status: p.status || 'active',
+            createdAt: p.createdAt || '2024-01-01',
             lastUpdated: '2024-01-15',
             size: 2048,
             path: p.path,
-            icon: '🚀'
+            icon: p.icon || '🌐'
           })),
           onProjectSelect: (project: any) => {
-            console.log('🔗 AllProjects - Project clicked:', project.name)
             loadTabContent(tab.id, `project:${project.id}`)
           },
           onOpenInBrowser: (projectId: string) => {
-            console.log('🔗 AllProjects - Opening project:', projectId)
             loadTabContent(tab.id, `project:${projectId}`)
           }
         }
-        console.log('📘 BrowserApp - Rendering all-projects with props:', { hasOnProjectSelect: !!allProjectsProps.onProjectSelect, hasOnOpenInBrowser: !!allProjectsProps.onOpenInBrowser })
         return (
           <ComponentViewer 
             componentId={project.id}

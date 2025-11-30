@@ -11,12 +11,12 @@ import ComponentBackground from './ComponentBackground'
 
 export interface BackgroundProps {
   className?: string
+  type?: "login" | "default"  
 }
 
-const Background = memo<BackgroundProps>(({ className }) => {
+const Background = memo<BackgroundProps>(({ className, type = "default" }) => {
   const { state } = useOS()
-  // Use the new styleSettings structure, fallback to legacy backgroundConfig
-  const config = state.systemSettings.styleSettings?.background || state.systemSettings.backgroundConfig as BackgroundConfig
+  const config = type === "login" ? state.systemSettings.styleSettings?.loginBackground : state.systemSettings.styleSettings?.background
 
   const renderBackground = () => {
     

@@ -77,8 +77,6 @@ export function ComponentViewer({
    * Renders the component content
    */
   const renderContent = useCallback(() => {
-    console.log('🎯 ComponentViewer - renderContent called with:', { contentType, componentId, hasHtmlContent: !!htmlContent })
-    console.log('🎯 ComponentViewer - componentProps:', componentProps)
     
     if (contentType === 'component' && componentId) {
       try {
@@ -101,9 +99,7 @@ export function ComponentViewer({
               }
             : {})
         }
-        
-        console.log('🎯 ComponentViewer - Rendering component with props:', { componentId, hasOnOpenInBrowser: !!finalProps.onOpenInBrowser, hasOnProjectSelect: !!finalProps.onProjectSelect })
-        
+                
         return <Component {...finalProps} />
       } catch (err) {
         console.error('🎯 ComponentViewer - Error rendering component:', err)

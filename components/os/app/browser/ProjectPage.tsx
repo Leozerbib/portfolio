@@ -29,11 +29,13 @@ export interface Project {
   type?: string
   technologies?: string[]
   features?: string[]
-  status?: 'completed' | 'in-progress' | 'planned'
+  status?: 'active' | 'development' | 'completed'
   githubUrl?: string
   liveUrl?: string
   createdAt?: string
-  author?: string
+  author?: string,
+  icon?: string,
+  category?: string,
 }
 
 /**
@@ -93,9 +95,9 @@ export function ProjectPage({ project, onNavigate, className }: ProjectPageProps
     switch (status) {
       case 'completed':
         return 'bg-green-50 text-green-700 border-green-200'
-      case 'in-progress':
+      case 'development':
         return 'bg-yellow-50 text-yellow-700 border-yellow-200'
-      case 'planned':
+      case 'active':
         return 'bg-blue-50 text-blue-700 border-blue-200'
       default:
         return 'bg-gray-50 text-gray-700 border-gray-200'
@@ -106,9 +108,9 @@ export function ProjectPage({ project, onNavigate, className }: ProjectPageProps
     switch (status) {
       case 'completed':
         return <CheckCircle className="w-4 h-4" />
-      case 'in-progress':
+      case 'development':
         return <Code className="w-4 h-4" />
-      case 'planned':
+      case 'active':
         return <Calendar className="w-4 h-4" />
       default:
         return <Folder className="w-4 h-4" />

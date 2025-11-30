@@ -11,7 +11,8 @@ interface SceneProps {
     fov?: number
   }
   shadows?: boolean
-  environment?: string
+  environment?: 'none' | string
+  envFiles?: string | string[]
   className?: string
 }
 
@@ -19,7 +20,8 @@ export function Scene({
   children, 
   camera = { position: [0, 0, -30], fov: 35 },
   shadows = true,
-  environment = "city",
+  environment = "none",
+  envFiles,
   className = ""
 }: SceneProps) {
   return (
@@ -32,7 +34,11 @@ export function Scene({
       >
         <Suspense fallback={null}>
           {children}
-          <Environment preset={environment as any} />
+          {envFiles ? (
+            <Environment files={envFiles} />
+          ) : environment !== 'none' ? (
+            <Environment preset={environment as any} />
+          ) : null}
         </Suspense>
         {shadows && (
           <ContactShadows 

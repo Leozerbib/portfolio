@@ -22,7 +22,6 @@ export function WindowContent({ window }: WindowContentProps) {
   
   // Guard against uninitialized file system
   if (!state.fileSystem || !state.fileSystem.root || !state.fileSystem.root.children) {
-    console.log('WindowContent - File system not yet initialized')
     return (
       <div className="h-full w-full flex items-center justify-center">
         <div className="text-center">
@@ -32,10 +31,11 @@ export function WindowContent({ window }: WindowContentProps) {
       </div>
     )
   }
+
+  console.log('WindowContent - Rendering window:', state)
   
   // Handler for opening projects in browser
   const handleOpenInBrowser = (projectId: string) => {
-    console.log('🌐 WindowContent - Opening project in browser:', projectId)
     
     const browserApp = state.apps.find(app => app.component === 'Browser')
     if (!browserApp) {
@@ -54,13 +54,11 @@ export function WindowContent({ window }: WindowContentProps) {
       
       // Navigate to the project URL
       const projectUrl = `project:${projectId}`
-      console.log('🌐 WindowContent - Navigating to:', projectUrl)
       
       // The browser will handle the navigation internally
     } else {
       // Create new browser window with project URL
       const projectUrl = `project:${projectId}`
-      console.log('🌐 WindowContent - Creating new browser window with URL:', projectUrl)
       
       const browserWindowWithProject = {
         ...browserApp,
@@ -87,7 +85,7 @@ export function WindowContent({ window }: WindowContentProps) {
       case 'Gallery':
         return <GalleryApp windowId={window.id} />
       case 'MarkdownApp':
-        return <MarkdownApp />
+        return <MarkdownApp file={window.initialFile} />
       default:       
         return (
           <Card className="h-full border-0 shadow-none">

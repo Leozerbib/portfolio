@@ -25,6 +25,8 @@ export interface ComponentInfo {
   technologies: string[]
   category: string
   status: 'active' | 'development' | 'completed'
+  createdAt: string
+  icon: string
 }
 
 // Component registry
@@ -36,8 +38,10 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     title: 'Système d\'Enchères',
     description: 'A comprehensive online auction system with real-time bidding, user authentication, and payment processing.',
     technologies: ['React', 'Node.js', 'WebSocket', 'PostgreSQL'],
-    category: 'Web Application',
-    status: 'completed'
+    category: 'Web',
+    status: 'completed',
+    createdAt: '2023-01-01',
+    icon: '🔨'
   },
   gile: {
     id: 'gile',
@@ -46,8 +50,10 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     title: 'Gile - File Manager',
     description: 'Modern file management system with cloud integration, advanced search, and collaborative features.',
     technologies: ['TypeScript', 'Electron', 'AWS S3', 'Redis'],
-    category: 'Desktop Application',
-    status: 'active'
+    category: 'Ai',
+    status: 'active',
+    createdAt: '2023-05-15',
+    icon: '🧠'
   },
   helixir: {
     id: 'helixir',
@@ -56,8 +62,10 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     title: 'Helixir - Code Editor',
     description: 'Next-generation code editor with AI assistance, collaborative editing, and advanced debugging tools.',
     technologies: ['Monaco Editor', 'WebAssembly', 'AI/ML', 'Docker'],
-    category: 'Development Tool',
-    status: 'development'
+    category: 'Ai',
+    status: 'development',
+    createdAt: '2023-08-20',
+    icon: '🤖'
   },
   lab: {
     id: 'lab',
@@ -66,8 +74,10 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     title: 'Lab - Experimental Platform',
     description: 'Research and development platform for testing new technologies and innovative web solutions.',
     technologies: ['WebGL', 'Three.js', 'WebRTC', 'Machine Learning'],
-    category: 'Research',
-    status: 'active'
+    category: 'Devops',
+    status: 'active',
+    createdAt: '2023-12-01',
+    icon: '🖥️'
   },
   optimisationPostgres: {
     id: 'optimisationPostgres',
@@ -76,8 +86,10 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     title: 'Optimisation PostgreSQL',
     description: 'Database optimization tools and performance monitoring for PostgreSQL databases.',
     technologies: ['PostgreSQL', 'Performance Monitoring', 'SQL Optimization', 'Analytics'],
-    category: 'Database Tool',
-    status: 'completed'
+    category: 'Database',
+    status: 'completed',
+    createdAt: '2024-01-01',
+    icon: '🗄️'
   },
   satviewer: {
     id: 'satviewer',
@@ -86,8 +98,10 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     title: 'SatViewer - Satellite Tracking',
     description: 'Real-time satellite tracking and visualization system with orbital predictions.',
     technologies: ['WebGL', 'Satellite APIs', 'Real-time Data', 'Orbital Mechanics'],
-    category: 'Visualization',
-    status: 'active'
+    category: 'Web',
+    status: 'active',
+    createdAt: '2024-02-01',
+    icon: '🚀'
   },
   spotmap: {
     id: 'spotmap',
@@ -96,8 +110,10 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     title: 'SpotMap - Location Discovery',
     description: 'Interactive location discovery platform with user-generated content and social features.',
     technologies: ['Maps API', 'Geolocation', 'Social Features', 'Mobile-First'],
-    category: 'Mobile Application',
-    status: 'completed'
+    category: 'Mobile',
+    status: 'completed',
+    createdAt: '2024-03-01',
+    icon: '📍'
   },
   'all-projects': {
     id: 'all-projects',
@@ -107,7 +123,9 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     description: 'Comprehensive portfolio overview showcasing all projects with detailed information and statistics.',
     technologies: ['React', 'TypeScript', 'Tailwind CSS', 'shadcn/ui'],
     category: 'Portfolio',
-    status: 'active'
+    status: 'active',
+    createdAt: '2024-04-01',
+    icon: '🌐'
   },
   'browser-home': {
     id: 'browser-home',
@@ -117,7 +135,9 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     description: 'Modern browser home page with quick links and navigation.',
     technologies: ['React', 'TypeScript', 'Tailwind CSS', 'shadcn/ui'],
     category: 'Browser',
-    status: 'active'
+    status: 'active',
+    createdAt: '2024-04-01',
+    icon: '🌐'
   },
   'browser-project': {
     id: 'browser-project',
@@ -127,7 +147,9 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     description: 'Project detail page for browser display with rich content and navigation.',
     technologies: ['React', 'TypeScript', 'Tailwind CSS', 'shadcn/ui'],
     category: 'Browser',
-    status: 'active'
+    status: 'active',
+    createdAt: '2024-04-01',
+    icon: '🌐'
   },
   'browser-error': {
     id: 'browser-error',
@@ -137,7 +159,9 @@ export const componentRegistry: Record<string, ComponentInfo> = {
     description: 'Error page for browser with customizable error types and recovery options.',
     technologies: ['React', 'TypeScript', 'Tailwind CSS', 'shadcn/ui'],
     category: 'Browser',
-    status: 'active'
+    status: 'active',
+    createdAt: '2024-04-01',
+    icon: '🌐'
   }
 }
 

@@ -86,7 +86,7 @@ export function LoginScreen() {
 
   return (
     <div className="min-h-screen flex items-stretch justify-center p-4 bg-gradient-to-br from-background via-background/95 to-muted/20">
-      <Background />
+      <Background type="login" />
       <div className="w-full flex flex-col items-center justify-center z-10">
         {/* Date and Time Display */}
         <div className="text-center mb-6 w-full h-1/4 flex flex-col items-center justify-center">

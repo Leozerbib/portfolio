@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -56,9 +56,10 @@ interface ViewSettings {
 
 interface MarkdownAppProps {
   className?: string
+  file?: OSFile
 }
 
-export function MarkdownApp({ className }: MarkdownAppProps) {
+export function MarkdownApp({ className, file }: MarkdownAppProps) {
   // State management
   const [openFiles, setOpenFiles] = useState<MarkdownFile[]>([])
   const [activeTab, setActiveTab] = useState<string>('')
@@ -111,6 +112,12 @@ export function MarkdownApp({ className }: MarkdownAppProps) {
   const handleFileOpen = useCallback(() => {
     setShowFileBrowser(true)
   }, [])
+
+  useEffect(() => {
+    if (file) {
+      handleOSFileSelect(file)
+    }
+  }, [file, handleOSFileSelect])
 
   const handleTabClose = useCallback((fileId: string) => {
     setOpenFiles(prev => {

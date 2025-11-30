@@ -139,15 +139,18 @@ export const defaultSettings: EnhancedSystemSettings = {
   // Style settings
   styleSettings: {
     background: {
-      type: "monocolor",
-      color: "#000000",
+      type: 'component',
+      component: "Dither",
+      props: {
+        colorNum: 4,
+        waveAmplitude: 0.3,
+        waveFrequency: 3,
+        waveSpeed: 0.05,
+      },
     },
     loginBackground: {
       type: 'image',
-      url: '',
-      position: 'center',
-      repeat: 'no-repeat',
-      size: 'cover'
+      url: '/image_os/background/BG (8).WEBP',
     },
     primaryColor: '#3b82f6',
     secondaryColor: '#a855f7',
