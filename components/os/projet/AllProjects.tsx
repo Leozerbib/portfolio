@@ -87,7 +87,6 @@ export default function AllProjects({
       setFilteredProjects(projectsToUse)
       setIsLoading(false)
     }, 500)
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [externalProjects])
 
   // Filter projects based on search query, category, and status

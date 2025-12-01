@@ -9,15 +9,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { ComponentViewer } from './browser/ComponentViewer'
-import AllProjects from '../projet/AllProjects'
 import * as browserUtils from '@/lib/browser-utils'
 import { 
   getContentType,
-  getPageTitle
 } from '@/lib/browser-utils'
 import { 
   createTab,
-  updateTabContent, 
   findTabById, 
   removeTab, 
   updateTab, 
@@ -55,7 +52,7 @@ export function BrowserApp({
   onNavigate,
   onOpenInBrowser,
 }: BrowserAppProps) {
-  const { state, dispatch } = useOS()
+  const { state } = useOS()
   
   // State management for tabs and navigation
   const [tabs, setTabs] = useState<BrowserTab[]>(() => [createTab('home')])

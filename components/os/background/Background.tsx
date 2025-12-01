@@ -3,7 +3,6 @@
 import { memo } from 'react'
 import { cn } from '@/lib/utils'
 import { useOS } from '@/hooks/useOS'
-import { BackgroundConfig } from '@/lib/settings'
 import ImageBackground from './ImageBackground'
 import MonocolorBackground from './MonocolorBackground'
 import GradientBackground from './GradientBackground'
